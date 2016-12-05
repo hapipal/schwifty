@@ -25,6 +25,7 @@
     "hoek": "4.x.x",
     "joi": "10.x.x",
     "knex": "^0.12.6",
+    "mysql": "^2.12.0",
     "objection": "^0.6.1"
   },
   "peerDependencies": {
