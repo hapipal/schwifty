@@ -4,7 +4,7 @@
   "description": "A hapi plugin integrating Objection.js ORM",
   "main": "lib/index.js",
   "scripts": {
-    "test": "lab -a code -t 100 -L",
+    "test": "NODE_ENV=test lab -a code -t 100 -L",
     "coveralls": "lab -r lcov | coveralls"
   },
   "repository": {
@@ -35,7 +35,8 @@
     "code": "4.x.x",
     "coveralls": "2.x.x",
     "hapi": "16.x.x",
-    "lab": "11.x.x"
+    "lab": "11.x.x",
+    "sqlite3": "^3.1.8"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",
   "license": "MIT"
