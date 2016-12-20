@@ -13,7 +13,7 @@ module.exports = [
 
         static customFunc() {
 
-            return 'Custom func called!';
+            return 'Custom func called from Dog!';
         }
 
         static get schema() {
@@ -24,9 +24,7 @@ module.exports = [
                 // querying for it FROM the database as well.
 
                 favoriteToy: Joi.string(),
-                superFavoriteToy: Joi.number(),
-                doggyName: Joi.number(),
-                // age: Joi.number().integer(),
+                name: Joi.number(),
                 ownerId: Joi.number().integer()
             });
         }
@@ -40,7 +38,7 @@ module.exports = [
 
         static customFunc() {
 
-            return 'Custom func called!';
+            return 'Custom func called from Person!';
         }
 
         upsert(model) {
@@ -73,23 +71,5 @@ module.exports = [
                 })
             });
         }
-
-        // static get relationMappings() {
-
-        //     return {
-        //         dogs: {
-        //             relation: Model.ManyToManyRelation,
-        //             modelClass: Dog,
-        //             join: {
-        //                 from: 'Person.id',
-        //                 to: 'Doggy.ownerId',
-        //                 through: {
-        //                     from: 'Person_Doggy.personId',
-        //                     to: 'Person_Doggy.dogId'
-        //                 }
-        //             }
-        //         }
-        //     };
-        // }
     }
 ];

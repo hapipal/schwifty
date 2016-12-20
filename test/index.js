@@ -209,7 +209,6 @@ describe('Schwifty', () => {
         it('takes `models` option as a relative path.', (done) => {
 
             const options = getOptions();
-
             options.models = Path.normalize('./test/' + modelsFile);
 
             getServer(options, (err, server) => {
@@ -217,7 +216,6 @@ describe('Schwifty', () => {
                 expect(err).to.not.exist();
 
                 const models = server.models();
-                console.log(models);
 
                 expect(models.dog).to.exist();
                 expect(models.person).to.exist();
@@ -246,6 +244,10 @@ describe('Schwifty', () => {
 
         it('takes `models` option as an array of objects.', (done) => {
 
+            /*
+                Passing true to getOptions adds the models as an array,
+                so this test is part of the function
+            */
             const options = getOptions(true);
 
             getServer(options, (err, server) => {
@@ -262,11 +264,9 @@ describe('Schwifty', () => {
 
         it('throws if the `models` option is not an array or string.', (done) => {
 
-            const options = {
-                connections,
-                adapters: dummyAdapters,
-                models: { some: 'object' }
-            };
+            const options = getOptions();
+
+            options.models = { models: modelsFile }; // Won't work!
 
             expect(() => {
 
@@ -279,80 +279,10 @@ describe('Schwifty', () => {
             done();
         });
 
-        it('takes `adapters` specified as a string.', (done) => {
-
-            const adapters = { myAdapter: 'sails-memory' };
-
-            const options = {
-                connections,
-                adapters,
-                models: Path.normalize(__dirname + '/' + modelsFile)
-            };
-
-            getServer(options, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const collector = state(server).collector;
-                expect(collector.adapters.myAdapter).to.shallow.equal(adapters.myAdapter);
-
-                done();
-            });
-        });
-
-        it('passes `defaults` option to Waterline.', (done) => {
-
-            const options = {
-                connections,
-                adapters: dummyAdapters,
-                models: ModelsFixture,
-                defaults: { migrate: 'safe' }
-            };
-
-            getServer(options, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                server.initialize((err) => {
-
-                    expect(err).to.not.exist();
-
-                    const collections = server.waterline.collections;
-                    expect(collections.thismodel.migrate).to.equal('create');
-                    expect(collections.thatmodel.migrate).to.equal('safe');
-
-                    done();
-                });
-            });
-        });
-
-        it('throws when specific `defaults` are specified more than once.', (done) => {
-
-            const options = { defaults: { x: 1 } };
-
-            getServer(options, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
-
-                    srv.register({ options, register: Schwifty }, next);
-                };
-
-                plugin.attributes = { name: 'my-plugin' };
-
-                expect(() => {
-
-                    server.register(plugin, () => done('Should not make it here.'));
-                }).to.throw('Default for "x" has already been set.');
-
-                done();
-            });
-        });
-
         it('throws when `teardownOnStop` is specified more than once.', (done) => {
 
-            const options = { teardownOnStop: false };
+            const options = getOptions();
+            options.teardownOnStop = false;
 
             getServer(options, (err, server) => {
 
@@ -377,13 +307,9 @@ describe('Schwifty', () => {
 
     describe('server.schwifty() decoration', () => {
 
-        it('aggregates models, connections, and adapters across plugins.', (done) => {
+        it('aggregates models across plugins.', (done) => {
 
-            const options = {
-                connections,
-                adapters: dummyAdapters,
-                models: ModelsFixture
-            };
+            const options = getOptions(true);
 
             getServer(options, (err, server) => {
 
@@ -392,12 +318,7 @@ describe('Schwifty', () => {
                 const plugin1 = (srv, opts, next) => {
 
                     srv.schwifty({
-                        connections: { oneConnection: { adapter: 'twoAdapter' } },
-                        adapters: { oneAdapter: {} },
-                        models: [{
-                            identity: 'onemodel',
-                            connection: 'twoConnection'
-                        }]
+                        models: require('./models-movie')
                     });
                     next();
                 };
@@ -407,12 +328,7 @@ describe('Schwifty', () => {
                 const plugin2 = (srv, opts, next) => {
 
                     srv.schwifty({
-                        connections: { twoConnection: { adapter: 'oneAdapter' } },
-                        adapters: { twoAdapter: {} },
-                        models: [{
-                            identity: 'twomodel',
-                            connection: 'oneConnection'
-                        }]
+                        models: require('./models-zombie')
                     });
                     next();
                 };
@@ -427,18 +343,13 @@ describe('Schwifty', () => {
 
                         expect(err).to.not.exist();
 
-                        const waterline = server.waterline;
-                        const collections = waterline.collections;
-                        const conns = waterline.connections;
+                        // Grab all models across plugins by passing true here:
+                        const models = server.models(true);
 
-                        expect(collections.thismodel.identity).to.equal('thismodel');
-                        expect(collections.thatmodel.identity).to.equal('thatmodel');
-                        expect(collections.onemodel.identity).to.equal('onemodel');
-                        expect(collections.twomodel.identity).to.equal('twomodel');
-
-                        expect(conns.myConnection).to.contain({ config: { adapter: 'myAdapter' } });
-                        expect(conns.oneConnection).to.contain({ config: { adapter: 'twoAdapter' } });
-                        expect(conns.twoConnection).to.contain({ config: { adapter: 'oneAdapter' } });
+                        expect(models.dog.tableName).to.equal('Dog');
+                        expect(models.person.tableName).to.equal('Person');
+                        expect(models.zombie.tableName).to.equal('Zombie');
+                        expect(models.movie.tableName).to.equal('Movie');
 
                         done();
                     });
@@ -448,17 +359,26 @@ describe('Schwifty', () => {
 
         it('aggregates model definitions within a plugin.', (done) => {
 
-            getServer({ models: [{ identity: 'strangemodel' }] }, (err, server) => {
+
+            const options = getOptions(true);
+
+            getServer(options, (err, server) => {
 
                 expect(err).to.not.exist();
 
                 const rootState = state(server);
-                expect(Object.keys(rootState.collector.models)).to.equal(['strangemodel']);
+                expect(Object.keys(rootState.collector.models)).to.equal(['dog', 'person']);
+
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty(ModelsFixture[0]);
-                    srv.schwifty(ModelsFixture[1]);
+                    srv.schwifty({
+                        models: require('./models-movie')
+                    });
+                    srv.schwifty({
+                        models: require('./models-zombie')
+                    });
+
                     srv.app.myState = state(srv);
                     next();
                 };
@@ -468,27 +388,35 @@ describe('Schwifty', () => {
                 server.register(plugin, (err) => {
 
                     expect(err).to.not.exist();
-                    expect(server.app.myState.models).to.equal(['thismodel', 'thatmodel']);
-                    expect(Object.keys(rootState.collector.models)).to.only.contain([
-                        'strangemodel',
-                        'thismodel',
-                        'thatmodel'
-                    ]);
 
-                    done();
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        expect(server.app.myState.models).to.equal(['Movie', 'Zombie']);
+
+                        expect(Object.keys(rootState.collector.models)).to.only.contain([
+                            'dog',
+                            'person',
+                            'movie',
+                            'zombie'
+                        ]);
+
+                        done();
+                    });
                 });
             });
         });
 
         it('accepts a single model definition.', (done) => {
 
-            getServer({}, (err, server) => {
+            getServer(getOptions(), (err, server) => {
 
                 expect(err).to.not.exist();
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty(ModelsFixture[0]);
+                    srv.schwifty(require('./models-zombie')[0]);
                     next();
                 };
 
@@ -499,7 +427,7 @@ describe('Schwifty', () => {
                     expect(err).to.not.exist();
 
                     const collector = state(server).collector;
-                    expect(collector.models.thismodel).to.exist();
+                    expect(collector.models.zombie).to.exist();
 
                     done();
                 });
@@ -508,7 +436,7 @@ describe('Schwifty', () => {
 
         it('accepts an array of model definitions.', (done) => {
 
-            getServer({}, (err, server) => {
+            getServer(getOptions(), (err, server) => {
 
                 expect(err).to.not.exist();
 
@@ -525,29 +453,27 @@ describe('Schwifty', () => {
                     expect(err).to.not.exist();
 
                     const collector = state(server).collector;
-                    expect(collector.models.thismodel).to.exist();
-                    expect(collector.models.thatmodel).to.exist();
+                    expect(collector.models.dog).to.exist();
+                    expect(collector.models.person).to.exist();
 
                     done();
                 });
             });
         });
 
-        it('throws on model identity collision.', (done) => {
+        it('throws on model tableName collision.', (done) => {
 
-            const options = {
-                connections,
-                adapters: dummyAdapters,
-                models: ModelsFixture
-            };
-
-            getServer(options, (err, server) => {
+            getServer(getOptions(true), (err, server) => {
 
                 expect(err).to.not.exist();
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty({ models: [{ identity: 'thismodel' }] });
+                    /*
+                        getOptions(true) loads up the ModelsFixture,
+                        so we'll load the first model again.
+                    */
+                    srv.schwifty(ModelsFixture[0]);
                     next();
                 };
 
@@ -556,82 +482,18 @@ describe('Schwifty', () => {
                 expect(() => {
 
                     server.register(plugin, () => done('Should not make it here.'));
-                }).to.throw('Model definition with identity "thismodel" has already been registered.');
-
-                done();
-            });
-        });
-
-        it('throws on connection name collision.', (done) => {
-
-            const options = {
-                connections,
-                adapters: dummyAdapters,
-                models: ModelsFixture
-            };
-
-            getServer(options, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
-
-                    srv.schwifty({ connections: { myConnection: {} } });
-                    next();
-                };
-
-                plugin.attributes = { name: 'my-plugin' };
-
-                expect(() => {
-
-                    server.register(plugin, () => done('Should not make it here.'));
-                }).to.throw('Connection "myConnection" has already been registered.');
-
-                done();
-            });
-        });
-
-        it('throws on adapter name collision.', (done) => {
-
-            const options = {
-                connections,
-                adapters: dummyAdapters,
-                models: ModelsFixture
-            };
-
-            getServer(options, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
-
-                    srv.schwifty({ adapters: { myAdapter: {} } });
-                    next();
-                };
-
-                plugin.attributes = { name: 'my-plugin' };
-
-                expect(() => {
-
-                    server.register(plugin, () => done('Should not make it here.'));
-                }).to.throw('Adapter "myAdapter" has already been registered.');
+                }).to.throw('Model definition with tableName "dog" has already been registered.');
 
                 done();
             });
         });
     });
 
-    describe('request.collections() and server.collections() decorations', () => {
+    describe('request.models() and server.models() decorations', () => {
 
         it('return empty object before server initialization.', (done) => {
 
-            const options = {
-                connections,
-                adapters: dummyAdapters,
-                models: ModelsFixture
-            };
-
-            getServer(options, (err, server) => {
+            getServer(getOptions(true), (err, server) => {
 
                 expect(err).not.to.exist();
 
@@ -640,14 +502,14 @@ describe('Schwifty', () => {
                     method: 'get',
                     handler: (request, reply) => {
 
-                        expect(request.collections()).to.equal({});
-                        expect(request.collections(true)).to.equal({});
+                        expect(request.models()).to.equal({});
+                        expect(request.models(true)).to.equal({});
                         reply({ ok: true });
                     }
                 });
 
-                expect(server.collections()).to.equal({});
-                expect(server.collections(true)).to.equal({});
+                expect(server.models()).to.equal({});
+                expect(server.models(true)).to.equal({});
 
                 server.inject({ url: '/', method: 'get' }, (response) => {
 
