@@ -1,5 +1,6 @@
 'use strict';
 
+const Joi = require('joi');
 const Model = require('..').Model;
 
 module.exports = [

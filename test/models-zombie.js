@@ -1,5 +1,6 @@
 'use strict';
 
+const Joi = require('joi');
 const Model = require('..').Model;
 
 module.exports = [
@@ -21,7 +22,7 @@ module.exports = [
                 */
 
                 firstName: Joi.string().required().max(255),
-                lastName: Joi.number(),
+                lastName: Joi.string(),
 
                 age: Joi.number().integer(),
 

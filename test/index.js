@@ -7,6 +7,7 @@ const Code = require('code');
 const Hapi = require('hapi');
 const Path = require('path');
 // const Knex = require('knex');
+const Objection = require('objection');
 const ModelsFixture = require('./models');
 const Schwifty = require('..');
 
@@ -304,6 +305,34 @@ describe('Schwifty', () => {
                 done();
             });
         });
+
+        it('throws when `migration` options are specified more than once.', (done) => {
+
+            const options = getOptions();
+            options.migration = {
+                dir: Path.normalize('./'),
+                mode: 'create'
+            };
+
+            getServer(options, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.register({ options, register: Schwifty }, next);
+                };
+
+                plugin.attributes = { name: 'my-plugin' };
+
+                expect(() => {
+
+                    server.register(plugin, () => done('Should not make it here.'));
+                }).to.throw('Schwifty\'s migration options can only be specified once.');
+
+                done();
+            });
+        });
     });
 
     describe('server.schwifty() decoration', () => {
@@ -484,6 +513,25 @@ describe('Schwifty', () => {
 
                     server.register(plugin, () => done('Should not make it here.'));
                 }).to.throw('Model definition with tableName "dog" has already been registered.');
+
+                done();
+            });
+        });
+
+        it('throws when invalid config schema passed.', (done) => {
+
+            getServer(getOptions(), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                expect(() => {
+
+                    const invalid = {
+                        invalid: 'options'
+                    };
+
+                    server.schwifty(invalid);
+                }).to.throw(/\"invalid\" is not allowed/);
 
                 done();
             });
@@ -724,6 +772,87 @@ describe('Schwifty', () => {
                         });
                     });
                 });
+            });
+        });
+    });
+
+    describe('SchwiftyModel', () => {
+
+        it('throws if required schema item not provided to $validate', (done) => {
+
+            const options = getOptions();
+            options.models = require('./models-zombie');
+
+            getServer(options, (err, server) => {
+
+                expect(err).not.to.exist();
+
+                const ZombieClass = server.models().zombie;
+                const chompy = new ZombieClass();
+
+                expect(() => {
+
+                    chompy.$validate({
+                        lastName: 'Chomperson'
+                    });
+                }).to.throw(Objection.ValidationError, /\\\"firstName\\\" is required/);
+
+                done();
+            });
+        });
+
+        it('skips validation if no schema exists on the model', (done) => {
+
+            class NoSchema extends Schwifty.Model {
+
+                static get tableName() {
+
+                    return 'NoSchema';
+                }
+            }
+
+            const options = getOptions();
+            options.models = [NoSchema];
+
+            getServer(options, (err, server) => {
+
+                expect(err).not.to.exist();
+
+                const NoSchemaClass = server.models().noschema;
+
+                const anythingGoes = new NoSchemaClass();
+
+                const whateverSchema = {
+                    anything: 'goes',
+                    whatever: 8
+                };
+
+                expect(anythingGoes.$validate(whateverSchema)).to.equal(whateverSchema);
+
+                done();
+            });
+        });
+
+        it('skips validation if `skipValidation` option is passed to $validate', (done) => {
+
+            const options = getOptions();
+            options.models = require('./models-zombie');
+
+            getServer(options, (err, server) => {
+
+                expect(err).not.to.exist();
+
+                const ZombieClass = server.models().zombie;
+                const chompy = new ZombieClass();
+
+                const whateverSchema = {
+                    anything: 'goes',
+                    whatever: 8
+                };
+
+                expect(chompy.$validate(whateverSchema, { skipValidation: true })).to.equal(whateverSchema);
+
+                done();
             });
         });
     });
