@@ -43,6 +43,7 @@ describe('Schwifty', () => {
     const getServer = (options, cb) => {
 
         const server = new Hapi.Server();
+        server.connection();
 
         server.register({
             register: Schwifty,
@@ -491,43 +492,37 @@ describe('Schwifty', () => {
 
     describe('request.models() and server.models() decorations', () => {
 
-        it('return empty object before server initialization.', (done) => {
+        // it('return empty object before server initialization.', (done) => {
+
+        //     getServer(getOptions(true), (err, server) => {
+
+        //         expect(err).not.to.exist();
+
+        //         server.route({
+        //             path: '/',
+        //             method: 'get',
+        //             handler: (request, reply) => {
+
+        //                 expect(request.models()).to.equal({});
+        //                 expect(request.models(true)).to.equal({});
+        //                 reply({ ok: true });
+        //             }
+        //         });
+
+        //         expect(server.models()).to.equal({});
+        //         expect(server.models(true)).to.equal({});
+
+        //         server.inject({ url: '/', method: 'get' }, (response) => {
+
+        //             expect(response.result).to.equal({ ok: true });
+        //             done();
+        //         });
+        //     });
+        // });
+
+        it('solely return models registered in route\'s realm by default.', (done) => {
 
             getServer(getOptions(true), (err, server) => {
-
-                expect(err).not.to.exist();
-
-                server.route({
-                    path: '/',
-                    method: 'get',
-                    handler: (request, reply) => {
-
-                        expect(request.models()).to.equal({});
-                        expect(request.models(true)).to.equal({});
-                        reply({ ok: true });
-                    }
-                });
-
-                expect(server.models()).to.equal({});
-                expect(server.models(true)).to.equal({});
-
-                server.inject({ url: '/', method: 'get' }, (response) => {
-
-                    expect(response.result).to.equal({ ok: true });
-                    done();
-                });
-            });
-        });
-
-        it('solely return collections registered in route\'s realm by default.', (done) => {
-
-            const options = {
-                connections,
-                adapters: dummyAdapters,
-                models: [ModelsFixture[0]]
-            };
-
-            getServer(options, (err, server) => {
 
                 expect(err).not.to.exist();
 
@@ -536,39 +531,41 @@ describe('Schwifty', () => {
                     method: 'get',
                     handler: (request, reply) => {
 
-                        const collections = request.collections();
-                        expect(collections).to.have.length(1);
-                        expect(collections.thismodel.identity).to.equal('thismodel');
+                        const models = request.models();
+                        expect(models).to.have.length(2);
+                        expect(models.dog.tableName).to.equal('Dog');
+                        expect(models.person.tableName).to.equal('Person');
                         reply({ ok: 'root' });
                     }
                 });
                 server.ext('onPreStart', (_, nxt) => {
 
-                    const collections = server.collections();
-                    expect(collections).to.have.length(1);
-                    expect(collections.thismodel.identity).to.equal('thismodel');
+                    const models = server.models();
+                    expect(models).to.have.length(2);
+                    expect(models.dog.tableName).to.equal('Dog');
+                    expect(models.person.tableName).to.equal('Person');
                     nxt();
                 });
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty(ModelsFixture[1]);
+                    srv.schwifty(require('./models-movie')[0]);
                     srv.route({
                         path: '/plugin',
                         method: 'get',
                         handler: (request, reply) => {
 
-                            const collections = request.collections();
-                            expect(collections).to.have.length(1);
-                            expect(collections.thatmodel.identity).to.equal('thatmodel');
+                            const models = request.models();
+                            expect(models).to.have.length(1);
+                            expect(models.movie.tableName).to.equal('Movie');
                             reply({ ok: 'plugin' });
                         }
                     });
                     srv.ext('onPreStart', (_, nxt) => {
 
-                        const collections = srv.collections();
-                        expect(collections).to.have.length(1);
-                        expect(collections.thatmodel.identity).to.equal('thatmodel');
+                        const models = srv.models();
+                        expect(models).to.have.length(1);
+                        expect(models.movie.tableName).to.equal('Movie');
                         nxt();
                     });
                     next();
@@ -599,15 +596,9 @@ describe('Schwifty', () => {
             });
         });
 
-        it('return empty object from if no models defined in route\'s realm.', (done) => {
+        it('return empty object if no models defined in route\'s realm.', (done) => {
 
-            const options = {
-                connections,
-                adapters: dummyAdapters,
-                models: ModelsFixture
-            };
-
-            getServer(options, (err, server) => {
+            getServer(getOptions(), (err, server) => {
 
                 expect(err).not.to.exist();
 
@@ -618,17 +609,17 @@ describe('Schwifty', () => {
                         method: 'get',
                         handler: (request, reply) => {
 
-                            const collections = request.collections();
-                            expect(collections).to.be.an.object();
-                            expect(collections).to.have.length(0);
+                            const models = request.models();
+                            expect(models).to.be.an.object();
+                            expect(models).to.have.length(0);
                             reply({ ok: true });
                         }
                     });
                     srv.ext('onPreStart', (_, nxt) => {
 
-                        const collections = srv.collections();
-                        expect(collections).to.be.an.object();
-                        expect(collections).to.have.length(0);
+                        const models = srv.models();
+                        expect(models).to.be.an.object();
+                        expect(models).to.have.length(0);
                         nxt();
                     });
                     next();
@@ -654,15 +645,9 @@ describe('Schwifty', () => {
             });
         });
 
-        it('return collections across all realms when passed true.', (done) => {
+        it('return models across all realms when passed true.', (done) => {
 
-            const options = {
-                connections,
-                adapters: dummyAdapters,
-                models: [ModelsFixture[0]]
-            };
-
-            getServer(options, (err, server) => {
+            getServer(getOptions(true), (err, server) => {
 
                 expect(err).not.to.exist();
 
@@ -671,43 +656,47 @@ describe('Schwifty', () => {
                     method: 'get',
                     handler: (request, reply) => {
 
-                        const collections = request.collections(true);
-                        expect(collections).to.have.length(2);
-                        expect(collections.thismodel.identity).to.equal('thismodel');
-                        expect(collections.thatmodel.identity).to.equal('thatmodel');
+                        const models = request.models(true);
+                        expect(models).to.have.length(3);
+                        expect(models.dog.tableName).to.equal('Dog');
+                        expect(models.person.tableName).to.equal('Person');
+                        expect(models.zombie.tableName).to.equal('Zombie');
                         reply({ ok: 'root' });
                     }
                 });
                 server.ext('onPreStart', (_, nxt) => {
 
-                    const collections = server.collections(true);
-                    expect(collections).to.have.length(2);
-                    expect(collections.thismodel.identity).to.equal('thismodel');
-                    expect(collections.thatmodel.identity).to.equal('thatmodel');
+                    const models = server.models(true);
+                    expect(models).to.have.length(3);
+                    expect(models.dog.tableName).to.equal('Dog');
+                    expect(models.person.tableName).to.equal('Person');
+                    expect(models.zombie.tableName).to.equal('Zombie');
                     nxt();
                 });
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty(ModelsFixture[1]);
+                    srv.schwifty(require('./models-zombie'));
                     srv.route({
                         path: '/plugin',
                         method: 'get',
                         handler: (request, reply) => {
 
-                            const collections = request.collections(true);
-                            expect(collections).to.have.length(2);
-                            expect(collections.thismodel.identity).to.equal('thismodel');
-                            expect(collections.thatmodel.identity).to.equal('thatmodel');
+                            const models = request.models(true);
+                            expect(models).to.have.length(3);
+                            expect(models.dog.tableName).to.equal('Dog');
+                            expect(models.person.tableName).to.equal('Person');
+                            expect(models.zombie.tableName).to.equal('Zombie');
                             reply({ ok: 'plugin' });
                         }
                     });
                     srv.ext('onPreStart', (_, nxt) => {
 
-                        const collections = srv.collections(true);
-                        expect(collections).to.have.length(2);
-                        expect(collections.thismodel.identity).to.equal('thismodel');
-                        expect(collections.thatmodel.identity).to.equal('thatmodel');
+                        const models = srv.models(true);
+                        expect(models).to.have.length(3);
+                        expect(models.dog.tableName).to.equal('Dog');
+                        expect(models.person.tableName).to.equal('Person');
+                        expect(models.zombie.tableName).to.equal('Zombie');
                         nxt();
                     });
                     next();
