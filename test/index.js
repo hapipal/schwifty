@@ -23,19 +23,17 @@ describe('Schwifty', () => {
     const getOptions = (includeModels) => {
 
         const options = JSON.parse(JSON.stringify({
-            knexFile: {
-                test: {
-                    client: 'sqlite3',
-                    connection: {
-                        filename: ':memory:'
-                    },
-                    useNullAsDefault: true
-                }
+            knexConfig: {
+                client: 'sqlite3',
+                connection: {
+                    filename: ':memory:'
+                },
+                useNullAsDefault: true
             }
         }));
 
         if (includeModels) {
-            options.knexFile.models = ModelsFixture;
+            options.knexConfig.models = ModelsFixture;
         }
 
         return options;
@@ -105,7 +103,7 @@ describe('Schwifty', () => {
 
         const options = getOptions(true);
 
-        options.knexFile.test.client = 'fakeConnection';
+        options.knexConfig.client = 'fakeConnection';
 
         getServer(options, (err, server) => {
 
@@ -190,21 +188,23 @@ describe('Schwifty', () => {
         });
     });
 
-    // it('can be registered multiple times.', (done) => {
+    it('can be registered multiple times.', (done) => {
 
-    //     getServer(getOptions(), (err, server) => {
+        getServer(getOptions(), (err, server) => {
 
-    //         console.log(server.registrations);
-    //         expect(err).to.not.exist();
-    //         expect(server.registrations.schwifty).to.exist();
+            expect(err).to.not.exist();
+            expect(server.registrations.schwifty).to.exist();
 
-    //         server.register(Schwifty, (err) => {
+            server.register({
+                register: Schwifty,
+                options: getOptions()
+            }, (err) => {
 
-    //             expect(err).not.to.exist();
-    //             done();
-    //         });
-    //     });
-    // });
+                expect(err).not.to.exist();
+                done();
+            });
+        });
+    });
 
     describe('plugin registration', () => {
 
@@ -513,25 +513,6 @@ describe('Schwifty', () => {
 
                     server.register(plugin, () => done('Should not make it here.'));
                 }).to.throw('Model definition with tableName "dog" has already been registered.');
-
-                done();
-            });
-        });
-
-        it('throws when invalid config schema passed.', (done) => {
-
-            getServer(getOptions(), (err, server) => {
-
-                expect(err).to.not.exist();
-
-                expect(() => {
-
-                    const invalid = {
-                        invalid: 'options'
-                    };
-
-                    server.schwifty(invalid);
-                }).to.throw(/\"invalid\" is not allowed/);
 
                 done();
             });
