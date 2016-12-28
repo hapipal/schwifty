@@ -23,6 +23,7 @@ describe('Schwifty', () => {
     const getOptions = (includeModels) => {
 
         const options = JSON.parse(JSON.stringify({
+
             knexConfig: {
                 client: 'sqlite3',
                 connection: {
@@ -33,7 +34,7 @@ describe('Schwifty', () => {
         }));
 
         if (includeModels) {
-            options.knexConfig.models = ModelsFixture;
+            options.models = ModelsFixture;
         }
 
         return options;
@@ -66,7 +67,7 @@ describe('Schwifty', () => {
 
     it('decorates the Knex instance onto the server.', (done) => {
 
-        getServer(getOptions(), (err, server) => {
+        getServer(getOptions(true), (err, server) => {
 
             expect(err).not.to.exist();
 
@@ -99,19 +100,24 @@ describe('Schwifty', () => {
         });
     });
 
-    // it('errors on Knex failure during onPreStart.', (done) => {
+    it('errors on Knex failure during onPreStart.', (done) => {
 
-    //     const options = getOptions(true);
+        const options = getOptions(true);
 
-    //     options.knexConfig.client = 'fakeConnection';
+        options.knexConfig.client = 'fakeConnection';
 
-    //     getServer(options, (err, server) => {
+        //////////////////
 
-    //         expect(err).to.exist();
-    //         expect(err.message).to.equal('Cannot find module \'./dialects/fakeConnection/index.js\'');
-    //         done();
-    //     });
-    // });
+        expect(() => {
+
+            getServer(options, (err, server) => {
+
+                throw new Error('Shouldn\'t make it here');
+            });
+        }).to.throw('Cannot find module \'./dialects/fakeConnection/index.js\'');
+
+        done();
+    });
 
     it('tears-down connections onPostStop.', (done) => {
 
@@ -301,6 +307,7 @@ describe('Schwifty', () => {
 
                     server.register(plugin, () => done('Should not make it here.'));
                 }).to.throw('Schwifty\'s teardownOnStop option can only be specified once.');
+                // }).to.throw(/Schwifty\'s teardownOnStop option can only be specified once./);
 
                 done();
             });
@@ -468,7 +475,6 @@ describe('Schwifty', () => {
 
             getServer(getOptions(true), (err, server) => {
 
-                console.log(err);
                 expect(err).to.not.exist();
 
                 const plugin = (srv, opts, next) => {
@@ -486,7 +492,7 @@ describe('Schwifty', () => {
 
                 expect(() => {
 
-                    server.register(plugin, () => done('Should not make it here.'));
+                    server.register(plugin, () => {throw new Error('Should not make it here.')});
                 }).to.throw('Model definition with tableName "dog" has already been registered.');
 
                 done();
