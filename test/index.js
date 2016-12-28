@@ -9,7 +9,7 @@ const Path = require('path');
 const Objection = require('objection');
 const ModelsFixture = require('./models');
 const Schwifty = require('..');
-
+const Items = require('items');
 
 // Test shortcuts
 
@@ -20,14 +20,18 @@ const it = lab.it;
 
 describe('Schwifty', () => {
 
-    const getOptions = (includeModels) => {
+    const getOptions = (includeModels, fileDbName) => {
+
+        if (fileDbName) {
+            fileDbName = Path.normalize('./test/' + fileDbName);
+        }
 
         const options = JSON.parse(JSON.stringify({
 
             knexConfig: {
                 client: 'sqlite3',
                 connection: {
-                    filename: ':memory:'
+                    filename: fileDbName ? fileDbName : ':memory:'
                 },
                 useNullAsDefault: true
             }
@@ -106,11 +110,9 @@ describe('Schwifty', () => {
 
         options.knexConfig.client = 'fakeConnection';
 
-        //////////////////
-
         expect(() => {
 
-            getServer(options, (err, server) => {
+            getServer(options, (_, server) => {
 
                 throw new Error('Shouldn\'t make it here');
             });
@@ -196,17 +198,26 @@ describe('Schwifty', () => {
 
     it('can be registered multiple times.', (done) => {
 
-        getServer(getOptions(), (err, server) => {
+        getServer(getOptions(true), (err, server) => {
 
             expect(err).to.not.exist();
             expect(server.registrations.schwifty).to.exist();
 
             server.register({
                 register: Schwifty,
-                options: getOptions()
+                options: { models: require('./models-movie').concat(require('./models-zombie')) }
             }, (err) => {
 
                 expect(err).not.to.exist();
+
+                // Ensure all models got added
+                expect(Object.keys(server.models())).to.only.contain([
+                    'dog',
+                    'person',
+                    'movie',
+                    'zombie'
+                ]);
+
                 done();
             });
         });
@@ -368,16 +379,12 @@ describe('Schwifty', () => {
 
         it('aggregates model definitions within a plugin.', (done) => {
 
-
-            const options = getOptions(true);
-
-            getServer(options, (err, server) => {
+            getServer(getOptions(true), (err, server) => {
 
                 expect(err).to.not.exist();
 
                 const rootState = state(server);
                 expect(Object.keys(rootState.collector.models)).to.equal(['dog', 'person']);
-
 
                 const plugin = (srv, opts, next) => {
 
@@ -402,7 +409,7 @@ describe('Schwifty', () => {
 
                         expect(err).to.not.exist();
 
-                        expect(server.app.myState.models).to.equal(['Movie', 'Zombie']);
+                        expect(rootState.collector.knexGroups[server.app.myState.knexGroupId].models).to.equal(['Movie', 'Zombie']);
 
                         expect(Object.keys(rootState.collector.models)).to.only.contain([
                             'dog',
@@ -492,7 +499,10 @@ describe('Schwifty', () => {
 
                 expect(() => {
 
-                    server.register(plugin, () => {throw new Error('Should not make it here.')});
+                    server.register(plugin, () => {
+
+                        throw new Error('Should not make it here.');
+                    });
                 }).to.throw('Model definition with tableName "dog" has already been registered.');
 
                 done();
@@ -500,35 +510,231 @@ describe('Schwifty', () => {
         });
     });
 
+    describe('request.knex() and server.knex() decorations', () => {
+
+        it('allows plugins to have a different knexConfig than the root server', (done) => {
+
+            // knex connection is :memory:
+            getServer(getOptions(true), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin1 = (srv, opts, next) => {
+
+                    srv.schwifty(require('./models-zombie'));
+
+                    srv.route({
+                        path: '/pluginOne',
+                        method: 'get',
+                        handler: (request, reply) => {
+
+                            expect(request.knex() === srv.root.knex()).to.equal(true);
+                            reply({ ok: true });
+                        }
+                    });
+
+                    // This plugin only passes in models so it's connection is the default (same as root server)
+                    expect(srv.knex() === srv.root.knex()).to.equal(true);
+                    next();
+                };
+
+                plugin1.attributes = { name: 'plugin-one' };
+
+                const plugin2 = (srv, opts, next) => {
+
+                    // knex connection is via a file, mydb.sqlite
+                    const options = getOptions(false, 'mydb.sqlite');
+                    options.models = require('./models-movie');
+                    srv.schwifty(options);
+
+                    srv.route({
+                        path: '/pluginTwo',
+                        method: 'get',
+                        handler: (request, reply) => {
+
+                            expect(request.knex() === srv.root.knex()).to.equal(false);
+                            reply({ ok: true });
+                        }
+                    });
+
+                    expect(srv.knex() === srv.root.knex()).to.equal(false);
+                    next();
+                };
+
+                plugin2.attributes = { name: 'plugin-two' };
+
+                server.register([plugin1, plugin2], (err) => {
+
+                    expect(err).to.not.exist();
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.inject({ url: '/pluginOne', method: 'get' }, (res1) => {
+
+                            expect(res1.result).to.equal({ ok: true });
+
+                            server.inject({ url: '/pluginTwo', method: 'get' }, (res2) => {
+
+                                expect(res2.result).to.equal({ ok: true });
+                                done();
+                            });
+                        });
+                    });
+                });
+            });
+        });
+
+        it('throws when multiple knexConfigs passed to same server', (done) => {
+
+            getServer(getOptions(), (err, server) => {
+
+                expect(err).to.not.exist();
+                expect(server.registrations.schwifty).to.exist();
+
+                expect(() => {
+
+                    server.register({
+                        register: Schwifty,
+                        options: getOptions()
+                    }, (_) => {
+
+                        return done(new Error('Should not make it here.'));
+                    });
+                }).to.throw(/Only one knexConfig allowed per server or plugin/);
+
+                done();
+            });
+        });
+
+        it('throws when multiple knexConfigs passed to same plugin', (done) => {
+
+            getServer(getOptions(), (err, server) => {
+
+                expect(err).to.not.exist();
+                expect(server.registrations.schwifty).to.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.schwifty(getOptions());
+
+                    expect(() => {
+
+                        // Just pass in some different looking options
+                        srv.schwifty(getOptions(true, 'mydb.sqlite'));
+                    }).to.throw(/Only one knexConfig allowed per server or plugin/);
+
+                    done();
+                };
+
+                plugin.attributes = { name: 'my-plugin' };
+
+                server.register(plugin, (_) => {
+
+                    throw new Error('Shouldn\'t make it here');
+                });
+            });
+        });
+
+    //     it('keeps models seperated into correct `knexGroups`', (done) => {
+
+    //         const createTablesInDb = (knexGroup, rootState, cb) => {
+
+    //             Items.parallel(knexGroup.models, (modelName, next) => {
+
+    //                 knexGroup.knex.schema.createTableIfNotExists(modelName, (table) => {
+
+    //                     table.integer('id').primary();
+    //                 }).then(next);
+    //             }, (err) => {
+
+    //                 expect(err).to.equal([]);
+    //                 cb();
+    //             });
+    //         };
+
+    //         getServer(getOptions(true), (err, server) => {
+
+    //             expect(err).to.not.exist();
+
+
+    //             const plugin = (srv, opts, next) => {
+
+    //                 srv.schwifty({
+    //                     models: require('./models-movie').concat(require('./models-zombie')),
+    //                     knexConfig: {
+    //                         client: 'sqlite3',
+    //                         connection: {
+    //                             filename: 'mydb.sqlite'
+    //                         },
+    //                         useNullAsDefault: true
+    //                     }
+    //                 });
+
+    //                 createTablesInDb(state(srv.root).collector.knexGroups[state(srv).knexGroupId], state(srv), () => {
+
+    //                     srv.app.myState = state(srv);
+    //                     next();
+    //                 });
+    //             };
+
+    //             plugin.attributes = { name: 'my-plugin' };
+
+    //             server.register(plugin, (err) => {
+
+    //                 expect(err).to.not.exist();
+
+    //                 server.initialize((err) => {
+
+    //                     expect(err).to.not.exist();
+
+    //                     expect(rootState.collector.knexGroups[server.app.myState.knexGroupId].models).to.equal(['movie', 'zombie']);
+
+    //                     expect(Object.keys(rootState.collector.models)).to.only.contain([
+    //                         'dog',
+    //                         'person',
+    //                         'movie',
+    //                         'zombie'
+    //                     ]);
+
+    //                     done();
+    //                 });
+    //             });
+    //         });
+    //     });
+
+    });
+
     describe('request.models() and server.models() decorations', () => {
 
-        // it('return empty object before server initialization.', (done) => {
+        it('return empty object before server initialization.', (done) => {
 
-        //     getServer(getOptions(true), (err, server) => {
+            getServer(getOptions(), (err, server) => {
 
-        //         expect(err).not.to.exist();
+                expect(err).not.to.exist();
 
-        //         server.route({
-        //             path: '/',
-        //             method: 'get',
-        //             handler: (request, reply) => {
+                server.route({
+                    path: '/',
+                    method: 'get',
+                    handler: (request, reply) => {
 
-        //                 expect(request.models()).to.equal({});
-        //                 expect(request.models(true)).to.equal({});
-        //                 reply({ ok: true });
-        //             }
-        //         });
+                        expect(request.models()).to.equal({});
+                        expect(request.models(true)).to.equal({});
+                        reply({ ok: true });
+                    }
+                });
 
-        //         expect(server.models()).to.equal({});
-        //         expect(server.models(true)).to.equal({});
+                expect(server.models()).to.equal({});
+                expect(server.models(true)).to.equal({});
 
-        //         server.inject({ url: '/', method: 'get' }, (response) => {
+                server.inject({ url: '/', method: 'get' }, (response) => {
 
-        //             expect(response.result).to.equal({ ok: true });
-        //             done();
-        //         });
-        //     });
-        // });
+                    expect(response.result).to.equal({ ok: true });
+                    done();
+                });
+            });
+        });
 
         it('solely return models registered in route\'s realm by default.', (done) => {
 
@@ -621,7 +827,7 @@ describe('Schwifty', () => {
 
                             const models = request.models();
                             expect(models).to.be.an.object();
-                            expect(models).to.have.length(0);
+                            expect(Object.keys(models)).to.have.length(0);
                             reply({ ok: true });
                         }
                     });
@@ -629,7 +835,7 @@ describe('Schwifty', () => {
 
                         const models = srv.models();
                         expect(models).to.be.an.object();
-                        expect(models).to.have.length(0);
+                        expect(Object.keys(models)).to.have.length(0);
                         nxt();
                     });
                     next();
