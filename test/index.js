@@ -946,7 +946,7 @@ describe('Schwifty', () => {
 
     describe('SchwiftyModel', () => {
 
-        it('throws if required schema item not provided to $validate', (done) => {
+        it('throws Objection.ValidationError if required schema item not provided to $validate', (done) => {
 
             const options = getOptions();
             options.models = require('./models-zombie');
@@ -964,6 +964,30 @@ describe('Schwifty', () => {
                         lastName: 'Chomperson'
                     });
                 }).to.throw(Objection.ValidationError, /\\\"firstName\\\" is required/);
+
+                done();
+            });
+        });
+
+        it('throws Objection.ValidationError if bad types are passed in', (done) => {
+
+            const options = getOptions();
+            options.models = require('./models-zombie');
+
+            getServer(options, (err, server) => {
+
+                expect(err).not.to.exist();
+
+                const ZombieClass = server.models().zombie;
+                const chompy = new ZombieClass();
+
+                expect(() => {
+
+                    chompy.$validate({
+                        firstName: 'Chompy',
+                        lastName: 1234
+                    });
+                }).to.throw(Objection.ValidationError, /\\\"lastName\\\" must be a string/);
 
                 done();
             });
