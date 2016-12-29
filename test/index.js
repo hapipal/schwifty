@@ -9,7 +9,6 @@ const Path = require('path');
 const Objection = require('objection');
 const ModelsFixture = require('./models');
 const Schwifty = require('..');
-const Items = require('items');
 
 // Test shortcuts
 
@@ -450,7 +449,7 @@ describe('Schwifty', () => {
             });
         });
 
-        it('accepts an array of model definitions.', (done) => {
+        it('throws on invalid config', (done) => {
 
             getServer(getOptions(), (err, server) => {
 
@@ -458,7 +457,15 @@ describe('Schwifty', () => {
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty(ModelsFixture);
+                    const options = getOptions();
+                    options.invalidProp = 'Im here!';
+
+
+                    expect(() => {
+
+                        srv.schwifty({ knexConfig: 'this is supposed to be an object' });
+                    }).to.throw(/"knexConfig" fails because \["knexConfig" must be an object\]/);
+
                     next();
                 };
 
@@ -467,12 +474,6 @@ describe('Schwifty', () => {
                 server.register(plugin, (err) => {
 
                     expect(err).to.not.exist();
-
-                    const collector = state(server).collector;
-
-                    expect(collector.models.dog).to.exist();
-                    expect(collector.models.person).to.exist();
-
                     done();
                 });
             });
@@ -736,6 +737,78 @@ describe('Schwifty', () => {
             });
         });
 
+        it('return empty object if no models have been added', (done) => {
+
+            getServer(getOptions(), (err, server) => {
+
+                expect(err).not.to.exist();
+
+                server.route({
+                    path: '/root',
+                    method: 'get',
+                    handler: (request, reply) => {
+
+                        expect(request.models()).to.equal({});
+                        expect(request.models(true)).to.equal({});
+                        reply({ ok: 'root' });
+                    }
+
+                });
+
+                const knexGroupId = state(server).knexGroupId;
+
+                expect(knexGroupId).to.exist();
+                expect(state(server.root).collector.knexGroups[knexGroupId].models).to.equal([]);
+
+                expect(server.models()).to.equal({});
+                expect(server.models(true)).to.equal({});
+
+
+                // Plugin here to show that models() defaults to [] (schwifty isn't called)
+                const plugin = (srv, opts, next) => {
+
+                    srv.route({
+                        path: '/plugin',
+                        method: 'get',
+                        handler: (request, reply) => {
+
+                            const _knexGroupId = state(srv);
+                            expect(_knexGroupId).to.not.exist();
+                            const models = request.models();
+                            expect(models).to.equal({});
+                            reply({ ok: 'plugin' });
+                        }
+                    });
+
+                    next();
+                };
+
+                plugin.attributes = { name: 'my-plugin' };
+
+
+                server.register(plugin, (err) => {
+
+                    expect(err).to.not.exist();
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.inject({ url: '/root', method: 'get' }, (res1) => {
+
+                            expect(res1.result).to.equal({ ok: 'root' });
+
+                            server.inject({ url: '/plugin', method: 'get' }, (res2) => {
+
+                                expect(res2.result).to.equal({ ok: 'plugin' });
+                                done();
+                            });
+                        });
+                    });
+                });
+            });
+        });
+
         it('solely return models registered in route\'s realm by default.', (done) => {
 
             getServer(getOptions(true), (err, server) => {
@@ -945,6 +1018,34 @@ describe('Schwifty', () => {
     });
 
     describe('SchwiftyModel', () => {
+
+        it('Validates correct schema input', (done) => {
+
+            const options = getOptions();
+            options.models = require('./models-zombie');
+
+            getServer(options, (err, server) => {
+
+                expect(err).not.to.exist();
+
+                const ZombieClass = server.models().zombie;
+                const chompy = new ZombieClass();
+
+                const validateRes = chompy.$validate({
+                    firstName: 'Chompy',
+                    lastName: 'Chomperson'
+                });
+
+                expect(validateRes).to.equal({
+                    favoriteFood: 'Tasty brains',
+                    firstName: 'Chompy',
+                    lastName: 'Chomperson'
+                });
+
+                done();
+            });
+        });
+
 
         it('throws Objection.ValidationError if required schema item not provided to $validate', (done) => {
 
