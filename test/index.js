@@ -136,10 +136,10 @@ describe('Schwifty', () => {
 
                     // Monkeypatch the destroy func
                     const oldDestroy = srv.knex().destroy;
-                    srv.knex().destroy = (...args) => {
+                    srv.knex().destroy = () => {
 
                         ++toredown;
-                        oldDestroy(...args);
+                        Function.prototype.apply(oldDestroy, arguments);
                     };
 
                     expect(server.knex()).to.exist();
@@ -175,10 +175,10 @@ describe('Schwifty', () => {
 
                     // Monkeypatch the destroy func
                     const oldDestroy = srv.knex().destroy;
-                    srv.knex().destroy = (...args) => {
+                    srv.knex().destroy = () => {
 
                         ++toredown;
-                        oldDestroy(...args);
+                        Function.prototype.apply(oldDestroy, arguments);
                     };
 
                     expect(server.knex()).to.exist();
