@@ -156,6 +156,84 @@ describe('Schwifty', () => {
         });
     });
 
+    it('tears-down all connections onPostStop.', (done) => {
+
+        getServer(getOptions(), (err, server) => {
+
+            let toredown = 0;
+            expect(err).to.not.exist();
+
+            server.initialize((err) => {
+
+                expect(err).to.not.exist();
+                expect(toredown).to.equal(0);
+
+                server.ext('onPreStop', (srv, next) => {
+
+                    // Monkeypatch the destroy func
+                    const oldDestroy = srv.knex().destroy;
+                    srv.knex().destroy = (cb) => {
+
+                        ++toredown;
+                        return oldDestroy(cb);
+                    };
+
+                    expect(server.knex()).to.exist();
+                    next();
+                });
+
+                const plugin1 = (srv, opts, next) => {
+
+                    srv.schwifty(getOptions(true, 'mydb.sqlite'));
+
+                    // Monkeypatch the destroy func
+                    const oldDestroy = srv.knex().destroy;
+                    srv.knex().destroy = (cb) => {
+
+                        ++toredown;
+                        return oldDestroy(cb);
+                    };
+
+                    next();
+                };
+
+                plugin1.attributes = { name: 'plugin-one' };
+
+
+                const plugin2 = (srv, opts, next) => {
+
+                    srv.schwifty(require('./models-zombie.js'));
+
+                    // Plugin 2 will use server.root's knex connection
+                    expect(srv.knex()).to.equal(state(server.root).knex);
+
+                    next();
+                };
+
+                plugin2.attributes = { name: 'plugin-two' };
+
+                server.register([plugin1, plugin2], (err) => {
+
+                    expect(err).to.not.exist();
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.stop((err) => {
+
+                            expect(err).to.not.exist();
+
+                            // 2 pools were destroyed, plugin2 shared knex with the server root
+                            expect(toredown).to.equal(2);
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+    });
+
     it('does not tear-down connections onPostStop with option `teardownOnStop` false.', (done) => {
 
         const options = getOptions();
@@ -189,6 +267,32 @@ describe('Schwifty', () => {
 
                     expect(err).to.not.exist();
                     expect(toredown).to.equal(0);
+                    done();
+                });
+            });
+        });
+    });
+
+    it('throws on any issues destroying knex instances', (done) => {
+
+        getServer(getOptions(), (err, server) => {
+
+            expect(err).to.not.exist();
+
+            server.initialize((err) => {
+
+                expect(err).to.not.exist();
+
+                server.ext('onPreStop', (srv, next) => {
+
+                    expect(server.knex()).to.exist();
+                    // server.knex().client = 'hello';
+                    next();
+                });
+
+                server.stop((err) => {
+
+                    expect(err).to.not.exist();
                     done();
                 });
             });
@@ -382,7 +486,7 @@ describe('Schwifty', () => {
 
                 expect(err).to.not.exist();
 
-                const rootState = state(server);
+                const rootState = state(server.root);
                 expect(Object.keys(rootState.collector.models)).to.equal(['dog', 'person']);
 
                 const plugin = (srv, opts, next) => {
