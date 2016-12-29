@@ -136,10 +136,10 @@ describe('Schwifty', () => {
 
                     // Monkeypatch the destroy func
                     const oldDestroy = srv.knex().destroy;
-                    srv.knex().destroy = () => {
+                    srv.knex().destroy = (cb) => {
 
                         ++toredown;
-                        Function.prototype.apply(oldDestroy, arguments);
+                        return oldDestroy(cb);
                     };
 
                     expect(server.knex()).to.exist();
@@ -175,10 +175,10 @@ describe('Schwifty', () => {
 
                     // Monkeypatch the destroy func
                     const oldDestroy = srv.knex().destroy;
-                    srv.knex().destroy = () => {
+                    srv.knex().destroy = (cb) => {
 
                         ++toredown;
-                        Function.prototype.apply(oldDestroy, arguments);
+                        return oldDestroy(cb);
                     };
 
                     expect(server.knex()).to.exist();
@@ -1019,7 +1019,7 @@ describe('Schwifty', () => {
 
     describe('SchwiftyModel', () => {
 
-        it('Validates correct schema input', (done) => {
+        it('validates correct schema input', (done) => {
 
             const options = getOptions();
             options.models = require('./models-zombie');
@@ -1046,6 +1046,33 @@ describe('Schwifty', () => {
             });
         });
 
+        it('defaults to validate itself if no json passed', (done) => {
+
+            const options = getOptions();
+            options.models = require('./models-zombie');
+
+            getServer(options, (err, server) => {
+
+                expect(err).not.to.exist();
+
+                const ZombieClass = server.models().zombie;
+                const chompy = new ZombieClass();
+                chompy.firstName = 'chompy';
+
+                /*
+                    firstName is required so it needs to be here to pass.
+                    Validate yourself chompy!
+                */
+                const validateRes = chompy.$validate();
+
+                expect(validateRes).to.equal({
+                    firstName: 'chompy',
+                    favoriteFood: 'Tasty brains'
+                });
+
+                done();
+            });
+        });
 
         it('throws Objection.ValidationError if required schema item not provided to $validate', (done) => {
 
