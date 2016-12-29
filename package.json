@@ -4,7 +4,7 @@
   "description": "A hapi plugin integrating Objection.js ORM",
   "main": "lib/index.js",
   "scripts": {
-    "test": "NODE_ENV=test lab -a code -t 100 -L -I '__core-js_shared__'",
+    "test": "NODE_ENV=test lab --timeout 4000 -a code -t 100 -L -I '__core-js_shared__'",
     "coveralls": "lab -r lcov | coveralls"
   },
   "repository": {
