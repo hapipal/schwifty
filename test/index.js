@@ -10,6 +10,7 @@ const Objection = require('objection');
 const ModelsFixture = require('./models');
 const Schwifty = require('..');
 
+
 // Test shortcuts
 
 const lab = exports.lab = Lab.script();
@@ -113,7 +114,7 @@ describe('Schwifty', () => {
 
             getServer(options, (_, server) => {
 
-                throw new Error('Shouldn\'t make it here');
+                throw new Error('Should not make it here');
             });
         }).to.throw('Cannot find module \'./dialects/fakeConnection/index.js\'');
 
