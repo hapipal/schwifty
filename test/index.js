@@ -54,10 +54,7 @@ describe('Schwifty', () => {
             options
         }, (err) => {
 
-            if (err) {
-                return cb(err);
-            }
-
+            expect(err).to.not.exist();
             return cb(null, server);
         });
     };
