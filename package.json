@@ -1,15 +1,15 @@
 {
   "name": "schwifty",
   "version": "0.0.1",
-  "description": "A hapi plugin integrating Objection.js ORM",
+  "description": "A hapi plugin integrating objection.js ORM",
   "main": "lib/index.js",
   "scripts": {
-    "test": "lab -a code -t 100 -L",
+    "test": "lab -a code -t 100 -I '__core-js_shared__' -L",
     "coveralls": "lab -r lcov | coveralls"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/BigRoomStudios/schwifty"
+    "url": "https://github.com/BigRoomStudios/schwifty.git"
   },
   "engines": {
     "node": ">=4.0.0"
@@ -23,19 +23,22 @@
   ],
   "dependencies": {
     "hoek": "4.x.x",
-    "joi": "10.x.x",
-    "knex": "^0.12.6",
-    "mysql": "^2.12.0",
-    "objection": "^0.6.1"
+    "items": "2.x.x",
+    "joi": "10.x.x"
   },
   "peerDependencies": {
-    "hapi": ">=10 <17"
+    "hapi": ">=10 <17",
+    "knex": ">=0.8.0",
+    "objection": "0.6.x"
   },
   "devDependencies": {
     "code": "4.x.x",
     "coveralls": "2.x.x",
     "hapi": "16.x.x",
-    "lab": "11.x.x"
+    "knex": "0.12.x",
+    "lab": "11.x.x",
+    "objection": "0.6.x",
+    "sqlite3": "3.x.x"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",
   "license": "MIT"
