@@ -87,14 +87,14 @@ describe('Schwifty', () => {
         getServer(config, (err, server) => {
 
             expect(err).to.not.exist();
-            expect(server.models().dog.$$knex).to.not.exist();
-            expect(server.models().person.$$knex).to.not.exist();
+            expect(server.models().Dog.$$knex).to.not.exist();
+            expect(server.models().Person.$$knex).to.not.exist();
 
             server.initialize((err) => {
 
                 expect(err).to.not.exist();
-                expect(server.models().dog.$$knex).to.exist();
-                expect(server.models().person.$$knex).to.exist();
+                expect(server.models().Dog.$$knex).to.exist();
+                expect(server.models().Person.$$knex).to.exist();
                 expect(server.models()).to.exist();
                 done();
             });
@@ -313,10 +313,10 @@ describe('Schwifty', () => {
 
                 // Ensure all models got added
                 expect(Object.keys(server.models())).to.only.contain([
-                    'dog',
-                    'person',
-                    'movie',
-                    'zombie'
+                    'Dog',
+                    'Person',
+                    'Movie',
+                    'Zombie'
                 ]);
 
                 done();
@@ -337,8 +337,8 @@ describe('Schwifty', () => {
 
                 const models = server.models();
 
-                expect(models.dog).to.exist();
-                expect(models.person).to.exist();
+                expect(models.Dog).to.exist();
+                expect(models.Person).to.exist();
 
                 done();
             });
@@ -355,8 +355,8 @@ describe('Schwifty', () => {
                 expect(err).to.not.exist();
 
                 const models = server.models();
-                expect(models.dog).to.exist();
-                expect(models.person).to.exist();
+                expect(models.Dog).to.exist();
+                expect(models.Person).to.exist();
 
                 done();
             });
@@ -375,8 +375,8 @@ describe('Schwifty', () => {
                 expect(err).to.not.exist();
 
                 const models = server.models();
-                expect(models.dog).to.exist();
-                expect(models.person).to.exist();
+                expect(models.Dog).to.exist();
+                expect(models.Person).to.exist();
 
                 done();
             });
@@ -467,10 +467,10 @@ describe('Schwifty', () => {
                         // Grab all models across plugins by passing true here:
                         const models = server.models(true);
 
-                        expect(models.dog.tableName).to.equal('Dog');
-                        expect(models.person.tableName).to.equal('Person');
-                        expect(models.zombie.tableName).to.equal('Zombie');
-                        expect(models.movie.tableName).to.equal('Movie');
+                        expect(models.Dog.tableName).to.equal('Dog');
+                        expect(models.Person.tableName).to.equal('Person');
+                        expect(models.Zombie.tableName).to.equal('Zombie');
+                        expect(models.Movie.tableName).to.equal('Movie');
 
                         done();
                     });
@@ -485,7 +485,7 @@ describe('Schwifty', () => {
                 expect(err).to.not.exist();
 
                 const rootState = state(server.root);
-                expect(Object.keys(rootState.collector.models)).to.equal(['dog', 'person']);
+                expect(Object.keys(rootState.collector.models)).to.equal(['Dog', 'Person']);
 
                 const plugin = (srv, opts, next) => {
 
@@ -510,13 +510,13 @@ describe('Schwifty', () => {
 
                         expect(err).to.not.exist();
 
-                        expect(rootState.collector.knexGroups[server.app.myState.knexGroupId].models).to.equal(['Movie', 'Zombie']);
+                        expect(server.app.myState.knexGroup.models).to.equal(['Movie', 'Zombie']);
 
                         expect(Object.keys(rootState.collector.models)).to.only.contain([
-                            'dog',
-                            'person',
-                            'movie',
-                            'zombie'
+                            'Dog',
+                            'Person',
+                            'Movie',
+                            'Zombie'
                         ]);
 
                         done();
@@ -544,7 +544,7 @@ describe('Schwifty', () => {
                     expect(err).to.not.exist();
 
                     const collector = state(server).collector;
-                    expect(collector.models.zombie).to.exist();
+                    expect(collector.models.Zombie).to.exist();
 
                     done();
                 });
@@ -606,7 +606,7 @@ describe('Schwifty', () => {
 
                         throw new Error('Should not make it here.');
                     });
-                }).to.throw('Model definition with tableName "dog" has already been registered.');
+                }).to.throw('Model definition with name "Dog" has already been registered.');
 
                 done();
             });
@@ -739,74 +739,6 @@ describe('Schwifty', () => {
                 });
             });
         });
-
-    //     it('keeps models seperated into correct `knexGroups`', (done) => {
-
-    //         const createTablesInDb = (knexGroup, rootState, cb) => {
-
-    //             Items.parallel(knexGroup.models, (modelName, next) => {
-
-    //                 knexGroup.knex.schema.createTableIfNotExists(modelName, (table) => {
-
-    //                     table.integer('id').primary();
-    //                 }).then(next);
-    //             }, (err) => {
-
-    //                 expect(err).to.equal([]);
-    //                 cb();
-    //             });
-    //         };
-
-    //         getServer(getOptions(true), (err, server) => {
-
-    //             expect(err).to.not.exist();
-
-
-    //             const plugin = (srv, opts, next) => {
-
-    //                 srv.schwifty({
-    //                     models: require('./models-movie').concat(require('./models-zombie')),
-    //                     knexConfig: {
-    //                         client: 'sqlite3',
-    //                         connection: {
-    //                             filename: 'mydb.sqlite'
-    //                         },
-    //                         useNullAsDefault: true
-    //                     }
-    //                 });
-
-    //                 createTablesInDb(state(srv.root).collector.knexGroups[state(srv).knexGroupId], state(srv), () => {
-
-    //                     srv.app.myState = state(srv);
-    //                     next();
-    //                 });
-    //             };
-
-    //             plugin.attributes = { name: 'my-plugin' };
-
-    //             server.register(plugin, (err) => {
-
-    //                 expect(err).to.not.exist();
-
-    //                 server.initialize((err) => {
-
-    //                     expect(err).to.not.exist();
-
-    //                     expect(rootState.collector.knexGroups[server.app.myState.knexGroupId].models).to.equal(['movie', 'zombie']);
-
-    //                     expect(Object.keys(rootState.collector.models)).to.only.contain([
-    //                         'dog',
-    //                         'person',
-    //                         'movie',
-    //                         'zombie'
-    //                     ]);
-
-    //                     done();
-    //                 });
-    //             });
-    //         });
-    //     });
-
     });
 
     describe('request.models() and server.models() decorations', () => {
@@ -857,10 +789,7 @@ describe('Schwifty', () => {
 
                 });
 
-                const knexGroupId = state(server).knexGroupId;
-
-                expect(knexGroupId).to.exist();
-                expect(state(server.root).collector.knexGroups[knexGroupId].models).to.equal([]);
+                expect(state(server).knexGroup.models).to.equal([]);
 
                 expect(server.models()).to.equal({});
                 expect(server.models(true)).to.equal({});
@@ -924,8 +853,8 @@ describe('Schwifty', () => {
 
                         const models = request.models();
                         expect(models).to.have.length(2);
-                        expect(models.dog.tableName).to.equal('Dog');
-                        expect(models.person.tableName).to.equal('Person');
+                        expect(models.Dog.tableName).to.equal('Dog');
+                        expect(models.Person.tableName).to.equal('Person');
                         reply({ ok: 'root' });
                     }
                 });
@@ -933,8 +862,8 @@ describe('Schwifty', () => {
 
                     const models = server.models();
                     expect(models).to.have.length(2);
-                    expect(models.dog.tableName).to.equal('Dog');
-                    expect(models.person.tableName).to.equal('Person');
+                    expect(models.Dog.tableName).to.equal('Dog');
+                    expect(models.Person.tableName).to.equal('Person');
                     nxt();
                 });
 
@@ -948,7 +877,7 @@ describe('Schwifty', () => {
 
                             const models = request.models();
                             expect(models).to.have.length(1);
-                            expect(models.movie.tableName).to.equal('Movie');
+                            expect(models.Movie.tableName).to.equal('Movie');
                             reply({ ok: 'plugin' });
                         }
                     });
@@ -956,7 +885,7 @@ describe('Schwifty', () => {
 
                         const models = srv.models();
                         expect(models).to.have.length(1);
-                        expect(models.movie.tableName).to.equal('Movie');
+                        expect(models.Movie.tableName).to.equal('Movie');
                         nxt();
                     });
                     next();
@@ -1049,9 +978,9 @@ describe('Schwifty', () => {
 
                         const models = request.models(true);
                         expect(models).to.have.length(3);
-                        expect(models.dog.tableName).to.equal('Dog');
-                        expect(models.person.tableName).to.equal('Person');
-                        expect(models.zombie.tableName).to.equal('Zombie');
+                        expect(models.Dog.tableName).to.equal('Dog');
+                        expect(models.Person.tableName).to.equal('Person');
+                        expect(models.Zombie.tableName).to.equal('Zombie');
                         reply({ ok: 'root' });
                     }
                 });
@@ -1059,9 +988,9 @@ describe('Schwifty', () => {
 
                     const models = server.models(true);
                     expect(models).to.have.length(3);
-                    expect(models.dog.tableName).to.equal('Dog');
-                    expect(models.person.tableName).to.equal('Person');
-                    expect(models.zombie.tableName).to.equal('Zombie');
+                    expect(models.Dog.tableName).to.equal('Dog');
+                    expect(models.Person.tableName).to.equal('Person');
+                    expect(models.Zombie.tableName).to.equal('Zombie');
                     nxt();
                 });
 
@@ -1075,9 +1004,9 @@ describe('Schwifty', () => {
 
                             const models = request.models(true);
                             expect(models).to.have.length(3);
-                            expect(models.dog.tableName).to.equal('Dog');
-                            expect(models.person.tableName).to.equal('Person');
-                            expect(models.zombie.tableName).to.equal('Zombie');
+                            expect(models.Dog.tableName).to.equal('Dog');
+                            expect(models.Person.tableName).to.equal('Person');
+                            expect(models.Zombie.tableName).to.equal('Zombie');
                             reply({ ok: 'plugin' });
                         }
                     });
@@ -1085,9 +1014,9 @@ describe('Schwifty', () => {
 
                         const models = srv.models(true);
                         expect(models).to.have.length(3);
-                        expect(models.dog.tableName).to.equal('Dog');
-                        expect(models.person.tableName).to.equal('Person');
-                        expect(models.zombie.tableName).to.equal('Zombie');
+                        expect(models.Dog.tableName).to.equal('Dog');
+                        expect(models.Person.tableName).to.equal('Person');
+                        expect(models.Zombie.tableName).to.equal('Zombie');
                         nxt();
                     });
                     next();
@@ -1130,7 +1059,7 @@ describe('Schwifty', () => {
 
                 expect(err).not.to.exist();
 
-                const ZombieClass = server.models().zombie;
+                const ZombieClass = server.models().Zombie;
                 const chompy = new ZombieClass();
 
                 const validateRes = chompy.$validate({
@@ -1157,7 +1086,7 @@ describe('Schwifty', () => {
 
                 expect(err).not.to.exist();
 
-                const ZombieClass = server.models().zombie;
+                const ZombieClass = server.models().Zombie;
                 const chompy = new ZombieClass();
                 chompy.firstName = 'chompy';
 
@@ -1185,7 +1114,7 @@ describe('Schwifty', () => {
 
                 expect(err).not.to.exist();
 
-                const ZombieClass = server.models().zombie;
+                const ZombieClass = server.models().Zombie;
                 const chompy = new ZombieClass();
 
                 expect(() => {
@@ -1208,7 +1137,7 @@ describe('Schwifty', () => {
 
                 expect(err).not.to.exist();
 
-                const ZombieClass = server.models().zombie;
+                const ZombieClass = server.models().Zombie;
                 const chompy = new ZombieClass();
 
                 expect(() => {
@@ -1240,7 +1169,7 @@ describe('Schwifty', () => {
 
                 expect(err).not.to.exist();
 
-                const NoSchemaClass = server.models().noschema;
+                const NoSchemaClass = server.models().NoSchema;
 
                 const anythingGoes = new NoSchemaClass();
 
@@ -1264,7 +1193,7 @@ describe('Schwifty', () => {
 
                 expect(err).not.to.exist();
 
-                const ZombieClass = server.models().zombie;
+                const ZombieClass = server.models().Zombie;
                 const chompy = new ZombieClass();
 
                 const whateverSchema = {
