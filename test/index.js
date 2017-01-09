@@ -1116,7 +1116,7 @@ describe('Schwifty', () => {
                 done();
             });
 
-            it('skips validation when missing model is missing joiSchema.', (done) => {
+            it('skips validation if model is missing joiSchema.', (done) => {
 
                 const anythingGoes = new Schwifty.Model();
 
@@ -1126,20 +1126,6 @@ describe('Schwifty', () => {
                 };
 
                 expect(anythingGoes.$validate(whateverSchema)).to.equal(whateverSchema);
-
-                done();
-            });
-
-            it('skips validation if `skipValidation` option is passed to $validate().', (done) => {
-
-                const chompy = new ZombieModel();
-
-                const whateverSchema = {
-                    anything: 'goes',
-                    whatever: 8
-                };
-
-                expect(chompy.$validate(whateverSchema, { skipValidation: true })).to.equal(whateverSchema);
 
                 done();
             });
