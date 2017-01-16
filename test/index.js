@@ -8,6 +8,7 @@ const Hapi = require('hapi');
 const Joi = require('joi');
 const Path = require('path');
 const Objection = require('objection');
+const Knex = require('knex');
 const ModelsFixture = require('./models');
 const ZombieModel = require('./models-zombie');
 const MovieModel = require('./models-movie');
@@ -30,7 +31,7 @@ describe('Schwifty', () => {
         }
 
         const options = {
-            knexConfig: {
+            knex: {
                 client: 'sqlite3',
                 useNullAsDefault: true,
                 connection: {
@@ -107,7 +108,7 @@ describe('Schwifty', () => {
 
         const options = getOptions(true);
 
-        options.knexConfig.client = 'fakeConnection';
+        options.knex.client = 'fakeConnection';
 
         expect(() => {
 
@@ -205,7 +206,7 @@ describe('Schwifty', () => {
                     srv.schwifty([ZombieModel]);
 
                     // Plugin 2 will use server.root's knex connection
-                    expect(srv.knex()).to.equal(state(server.root).knex);
+                    expect(srv.knex()).to.shallow.equal(srv.root.knex());
 
                     next();
                 };
@@ -553,6 +554,30 @@ describe('Schwifty', () => {
             });
         });
 
+        it('accepts `knex` as a knex instance.', (done) => {
+
+            const options = getOptions();
+            delete options.knex;
+
+            getServer(options, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const knex = Knex({});
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.schwifty({ knex });
+                    expect(srv.knex()).to.shallow.equal(knex);
+                    next();
+                };
+
+                plugin.attributes = { name: 'my-plugin' };
+
+                server.register(plugin, done);
+            });
+        });
+
         it('throws on invalid config', (done) => {
 
             getServer(getOptions(), (err, server) => {
@@ -564,11 +589,10 @@ describe('Schwifty', () => {
                     const options = getOptions();
                     options.invalidProp = 'Im here!';
 
-
                     expect(() => {
 
-                        srv.schwifty({ knexConfig: 'this is supposed to be an object' });
-                    }).to.throw(/"knexConfig" fails because \["knexConfig" must be an object\]/);
+                        srv.schwifty({ knex: 'should be knex config or knex instance' });
+                    }).to.throw(/"knex"/);
 
                     next();
                 };
@@ -608,7 +632,7 @@ describe('Schwifty', () => {
 
                         throw new Error('Should not make it here.');
                     });
-                }).to.throw('Model definition with name "Dog" has already been registered.');
+                }).to.throw('Model "Dog" has already been registered.');
 
                 done();
             });
@@ -617,7 +641,7 @@ describe('Schwifty', () => {
 
     describe('request.knex() and server.knex() decorations', () => {
 
-        it('allows plugins to have a different knexConfig than the root server', (done) => {
+        it('allows plugins to have a different knex instances than the root server', (done) => {
 
             // knex connection is :memory:
             getServer(getOptions(true), (err, server) => {
@@ -633,13 +657,13 @@ describe('Schwifty', () => {
                         method: 'get',
                         handler: (request, reply) => {
 
-                            expect(request.knex() === srv.root.knex()).to.equal(true);
+                            expect(request.knex()).to.shallow.equal(srv.root.knex());
                             reply({ ok: true });
                         }
                     });
 
                     // This plugin only passes in models so it's connection is the default (same as root server)
-                    expect(srv.knex() === srv.root.knex()).to.equal(true);
+                    expect(srv.knex()).to.shallow.equal(srv.root.knex());
                     next();
                 };
 
@@ -657,12 +681,12 @@ describe('Schwifty', () => {
                         method: 'get',
                         handler: (request, reply) => {
 
-                            expect(request.knex() === srv.root.knex()).to.equal(false);
+                            expect(request.knex()).to.not.shallow.equal(srv.root.knex());
                             reply({ ok: true });
                         }
                     });
 
-                    expect(srv.knex() === srv.root.knex()).to.equal(false);
+                    expect(srv.knex()).to.not.shallow.equal(srv.root.knex());
                     next();
                 };
 
@@ -691,7 +715,7 @@ describe('Schwifty', () => {
             });
         });
 
-        it('throws when multiple knexConfigs passed to same server', (done) => {
+        it('throws when multiple knex instances passed to same server', (done) => {
 
             getServer(getOptions(), (err, server) => {
 
@@ -703,17 +727,17 @@ describe('Schwifty', () => {
                     server.register({
                         register: Schwifty,
                         options: getOptions()
-                    }, (_) => {
+                    }, (ignoreErr) => {
 
                         return done(new Error('Should not make it here.'));
                     });
-                }).to.throw(/Only one knexConfig allowed per server or plugin/);
+                }).to.throw('A knex instance/config may be specified only once per server or plugin.');
 
                 done();
             });
         });
 
-        it('throws when multiple knexConfigs passed to same plugin', (done) => {
+        it('throws when multiple knex instances passed to same plugin', (done) => {
 
             getServer(getOptions(), (err, server) => {
 
@@ -728,14 +752,14 @@ describe('Schwifty', () => {
 
                         // Just pass in some different looking options
                         srv.schwifty(getOptions(true, 'mydb.sqlite'));
-                    }).to.throw(/Only one knexConfig allowed per server or plugin/);
+                    }).to.throw('A knex instance/config may be specified only once per server or plugin.');
 
                     done();
                 };
 
                 plugin.attributes = { name: 'my-plugin' };
 
-                server.register(plugin, (_) => {
+                server.register(plugin, (ignoreErr) => {
 
                     throw new Error('Shouldn\'t make it here');
                 });
