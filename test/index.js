@@ -768,7 +768,7 @@ describe('Schwifty', () => {
             });
         });
 
-        it('runs when `migrateOnStart` plugin/server option is `true`.', (done) => {
+        it('migrates to latest when `migrateOnStart` plugin/server option is `true`.', (done) => {
 
             getServer(getOptions({
                 migrationsDir: './test/migrations/basic',
@@ -792,6 +792,82 @@ describe('Schwifty', () => {
                             expect(versionPost).to.equal('basic.js');
 
                             done();
+                        });
+                    });
+                });
+            });
+        });
+
+        it('migrates to latest when `migrateOnStart` plugin/server option is `\'latest\'`.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: 'latest'
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                    expect(err).to.not.exist();
+                    expect(versionPre).to.equal('none');
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                            expect(err).to.not.exist();
+                            expect(versionPost).to.equal('basic.js');
+
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
+        it('rollsback when `migrateOnStart` plugin/server option is `\'rollback\'`.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: true
+            }), (err, server1) => {
+
+                expect(err).to.not.exist();
+
+                server1.initialize((err) => {
+
+                    expect(err).to.not.exist();
+
+                    server1.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                        expect(err).to.not.exist();
+                        expect(versionPre).to.equal('basic.js');
+
+                        getServer({
+                            knex: server1.knex(),
+                            migrationsDir: './test/migrations/basic',
+                            migrateOnStart: 'rollback'
+                        }, (err, server2) => {
+
+                            expect(err).to.not.exist();
+
+                            expect(server1.knex()).to.shallow.equal(server2.knex());
+
+                            server2.initialize((err) => {
+
+                                expect(err).to.not.exist();
+
+                                server2.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                                    expect(err).to.not.exist();
+                                    expect(versionPost).to.equal('none');
+
+                                    done();
+                                });
+                            });
                         });
                     });
                 });
