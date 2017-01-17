@@ -6,7 +6,10 @@ const Lab = require('lab');
 const Code = require('code');
 const Hapi = require('hapi');
 const Joi = require('joi');
+const Hoek = require('hoek');
 const Path = require('path');
+const Fs = require('fs');
+const Tmp = require('tmp');
 const Objection = require('objection');
 const Knex = require('knex');
 const ModelsFixture = require('./models');
@@ -24,27 +27,19 @@ const it = lab.it;
 
 describe('Schwifty', () => {
 
-    const getOptions = (includeModels, fileDbName) => {
-
-        if (fileDbName) {
-            fileDbName = Path.normalize('./test/' + fileDbName);
-        }
+    const getOptions = (extras) => {
 
         const options = {
             knex: {
                 client: 'sqlite3',
                 useNullAsDefault: true,
                 connection: {
-                    filename: fileDbName || ':memory:'
+                    filename: ':memory:'
                 }
             }
         };
 
-        if (includeModels) {
-            options.models = ModelsFixture;
-        }
-
-        return options;
+        return Hoek.applyToDefaults(options, extras || {});
     };
 
     const getServer = (options, cb) => {
@@ -57,7 +52,10 @@ describe('Schwifty', () => {
             options
         }, (err) => {
 
-            expect(err).to.not.exist();
+            if (err) {
+                return cb(err);
+            }
+
             return cb(null, server);
         });
     };
@@ -71,7 +69,7 @@ describe('Schwifty', () => {
 
     it('decorates the Knex instance onto the server.', (done) => {
 
-        getServer(getOptions(true), (err, server) => {
+        getServer(getOptions(), (err, server) => {
 
             expect(err).not.to.exist();
 
@@ -85,7 +83,7 @@ describe('Schwifty', () => {
 
     it('connects models to knex instance during onPreStart.', (done) => {
 
-        const config = getOptions(true);
+        const config = getOptions({ models: ModelsFixture });
 
         getServer(config, (err, server) => {
 
@@ -98,27 +96,9 @@ describe('Schwifty', () => {
                 expect(err).to.not.exist();
                 expect(server.models().Dog.$$knex).to.exist();
                 expect(server.models().Person.$$knex).to.exist();
-                expect(server.models()).to.exist();
                 done();
             });
         });
-    });
-
-    it('errors on Knex failure during onPreStart.', (done) => {
-
-        const options = getOptions(true);
-
-        options.knex.client = 'fakeConnection';
-
-        expect(() => {
-
-            getServer(options, (_, server) => {
-
-                throw new Error('Should not make it here');
-            });
-        }).to.throw('Cannot find module \'./dialects/fakeConnection/index.js\'');
-
-        done();
     });
 
     it('tears-down connections onPostStop.', (done) => {
@@ -133,19 +113,12 @@ describe('Schwifty', () => {
                 expect(err).to.not.exist();
                 expect(toredown).to.equal(0);
 
-                server.ext('onPreStop', (srv, next) => {
+                const oldDestroy = server.knex().destroy;
+                server.knex().destroy = (cb) => {
 
-                    // Monkeypatch the destroy func
-                    const oldDestroy = srv.knex().destroy;
-                    srv.knex().destroy = (cb) => {
-
-                        ++toredown;
-                        return oldDestroy(cb);
-                    };
-
-                    expect(server.knex()).to.exist();
-                    next();
-                });
+                    ++toredown;
+                    return oldDestroy(cb);
+                };
 
                 server.stop((err) => {
 
@@ -169,23 +142,9 @@ describe('Schwifty', () => {
                 expect(err).to.not.exist();
                 expect(toredown).to.equal(0);
 
-                server.ext('onPreStop', (srv, next) => {
-
-                    // Monkeypatch the destroy func
-                    const oldDestroy = srv.knex().destroy;
-                    srv.knex().destroy = (cb) => {
-
-                        ++toredown;
-                        return oldDestroy(cb);
-                    };
-
-                    expect(server.knex()).to.exist();
-                    next();
-                });
-
                 const plugin1 = (srv, opts, next) => {
 
-                    srv.schwifty(getOptions(true, 'mydb.sqlite'));
+                    srv.schwifty(getOptions({ models: ModelsFixture }));
 
                     // Monkeypatch the destroy func
                     const oldDestroy = srv.knex().destroy;
@@ -200,7 +159,6 @@ describe('Schwifty', () => {
 
                 plugin1.attributes = { name: 'plugin-one' };
 
-
                 const plugin2 = (srv, opts, next) => {
 
                     srv.schwifty([ZombieModel]);
@@ -212,6 +170,13 @@ describe('Schwifty', () => {
                 };
 
                 plugin2.attributes = { name: 'plugin-two' };
+
+                const oldDestroy = server.knex().destroy;
+                server.knex().destroy = (cb) => {
+
+                    ++toredown;
+                    return oldDestroy(cb);
+                };
 
                 server.register([plugin1, plugin2], (err) => {
 
@@ -237,8 +202,7 @@ describe('Schwifty', () => {
 
     it('does not tear-down connections onPostStop with option `teardownOnStop` false.', (done) => {
 
-        const options = getOptions();
-        options.teardownOnStop = false;
+        const options = getOptions({ teardownOnStop: false });
 
         getServer(options, (err, server) => {
 
@@ -274,35 +238,9 @@ describe('Schwifty', () => {
         });
     });
 
-    it('throws on any issues destroying knex instances', (done) => {
-
-        getServer(getOptions(), (err, server) => {
-
-            expect(err).to.not.exist();
-
-            server.initialize((err) => {
-
-                expect(err).to.not.exist();
-
-                server.ext('onPreStop', (srv, next) => {
-
-                    expect(server.knex()).to.exist();
-                    // server.knex().client = 'hello';
-                    next();
-                });
-
-                server.stop((err) => {
-
-                    expect(err).to.not.exist();
-                    done();
-                });
-            });
-        });
-    });
-
     it('can be registered multiple times.', (done) => {
 
-        getServer(getOptions(true), (err, server) => {
+        getServer(getOptions({ models: ModelsFixture }), (err, server) => {
 
             expect(err).to.not.exist();
             expect(server.registrations.schwifty).to.exist();
@@ -331,8 +269,7 @@ describe('Schwifty', () => {
 
         it('takes `models` option as a relative path.', (done) => {
 
-            const options = getOptions();
-            options.models = Path.normalize('./test/' + modelsFile);
+            const options = getOptions({ models: Path.normalize('./test/' + modelsFile) });
 
             getServer(options, (err, server) => {
 
@@ -349,9 +286,7 @@ describe('Schwifty', () => {
 
         it('takes `models` option as an absolute path.', (done) => {
 
-            const options = getOptions();
-
-            options.models = Path.normalize(__dirname + '/' + modelsFile);
+            const options = getOptions({ models: Path.normalize(__dirname + '/' + modelsFile) });
 
             getServer(options, (err, server) => {
 
@@ -367,11 +302,7 @@ describe('Schwifty', () => {
 
         it('takes `models` option as an array of objects.', (done) => {
 
-            /*
-                Passing true to getOptions adds the models as an array,
-                so this test is part of the function
-            */
-            const options = getOptions(true);
+            const options = getOptions({ models: ModelsFixture });
 
             getServer(options, (err, server) => {
 
@@ -387,9 +318,7 @@ describe('Schwifty', () => {
 
         it('throws if the `models` option is not an array or string.', (done) => {
 
-            const options = getOptions();
-
-            options.models = { models: modelsFile }; // Won't work!
+            const options = getOptions({ models: {} });
 
             expect(() => {
 
@@ -404,8 +333,7 @@ describe('Schwifty', () => {
 
         it('throws when `teardownOnStop` is specified more than once.', (done) => {
 
-            const options = getOptions();
-            options.teardownOnStop = false;
+            const options = getOptions({ teardownOnStop: false });
 
             getServer(options, (err, server) => {
 
@@ -427,13 +355,35 @@ describe('Schwifty', () => {
                 done();
             });
         });
+
+        it('throws when `migrateOnStart` is specified more than once.', (done) => {
+
+            getServer({ migrateOnStart: false }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.register({ register: Schwifty, options: { migrateOnStart: false } }, next);
+                };
+
+                plugin.attributes = { name: 'my-plugin' };
+
+                expect(() => {
+
+                    server.register(plugin, () => done(new Error('Should not make it here.')));
+                }).to.throw('Schwifty\'s migrateOnStart option can only be specified once.');
+
+                done();
+            });
+        });
     });
 
     describe('server.schwifty() decoration', () => {
 
         it('aggregates models across plugins.', (done) => {
 
-            const options = getOptions(true);
+            const options = getOptions({ models: ModelsFixture });
 
             getServer(options, (err, server) => {
 
@@ -483,7 +433,7 @@ describe('Schwifty', () => {
 
         it('aggregates model definitions within a plugin.', (done) => {
 
-            getServer(getOptions(true), (err, server) => {
+            getServer(getOptions({ models: ModelsFixture }), (err, server) => {
 
                 expect(err).to.not.exist();
 
@@ -586,13 +536,10 @@ describe('Schwifty', () => {
 
                 const plugin = (srv, opts, next) => {
 
-                    const options = getOptions();
-                    options.invalidProp = 'Im here!';
-
                     expect(() => {
 
-                        srv.schwifty({ knex: 'should be knex config or knex instance' });
-                    }).to.throw(/"knex"/);
+                        srv.schwifty({ invalidProp: 'bad' });
+                    }).to.throw(/\"invalidProp\" is not allowed/);
 
                     next();
                 };
@@ -607,18 +554,13 @@ describe('Schwifty', () => {
             });
         });
 
-        it('throws on model tableName collision.', (done) => {
+        it('throws on model name collision.', (done) => {
 
-            getServer(getOptions(true), (err, server) => {
+            getServer(getOptions({ models: ModelsFixture }), (err, server) => {
 
                 expect(err).to.not.exist();
 
                 const plugin = (srv, opts, next) => {
-
-                    /*
-                        getOptions(true) loads up the ModelsFixture,
-                        so we'll load the first model again.
-                    */
 
                     srv.schwifty(ModelsFixture[0]);
                     next();
@@ -643,8 +585,7 @@ describe('Schwifty', () => {
 
         it('allows plugins to have a different knex instances than the root server', (done) => {
 
-            // knex connection is :memory:
-            getServer(getOptions(true), (err, server) => {
+            getServer(getOptions({ models: ModelsFixture }), (err, server) => {
 
                 expect(err).to.not.exist();
 
@@ -671,9 +612,8 @@ describe('Schwifty', () => {
 
                 const plugin2 = (srv, opts, next) => {
 
-                    // knex connection is via a file, mydb.sqlite
-                    const options = getOptions(false, 'mydb.sqlite');
-                    options.models = [MovieModel];
+                    const options = getOptions({ models: [MovieModel] }); // New knex instance
+
                     srv.schwifty(options);
 
                     srv.route({
@@ -751,7 +691,7 @@ describe('Schwifty', () => {
                     expect(() => {
 
                         // Just pass in some different looking options
-                        srv.schwifty(getOptions(true, 'mydb.sqlite'));
+                        srv.schwifty(getOptions({ models: ModelsFixture }));
                     }).to.throw('A knex instance/config may be specified only once per server or plugin.');
 
                     done();
@@ -762,6 +702,368 @@ describe('Schwifty', () => {
                 server.register(plugin, (ignoreErr) => {
 
                     throw new Error('Shouldn\'t make it here');
+                });
+            });
+        });
+    });
+
+    describe('migrations', () => {
+
+        it('does not run by default.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic'
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                    expect(err).to.not.exist();
+                    expect(versionPre).to.equal('none');
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                            expect(err).to.not.exist();
+                            expect(versionPost).to.equal('none');
+
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
+        it('does not run when `migrateOnStart` plugin/server option is `false`.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: false
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                    expect(err).to.not.exist();
+                    expect(versionPre).to.equal('none');
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                            expect(err).to.not.exist();
+                            expect(versionPost).to.equal('none');
+
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
+        it('migrates to latest when `migrateOnStart` plugin/server option is `true`.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                    expect(err).to.not.exist();
+                    expect(versionPre).to.equal('none');
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                            expect(err).to.not.exist();
+                            expect(versionPost).to.equal('basic.js');
+
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
+        it('migrates to latest when `migrateOnStart` plugin/server option is `\'latest\'`.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: 'latest'
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                    expect(err).to.not.exist();
+                    expect(versionPre).to.equal('none');
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                            expect(err).to.not.exist();
+                            expect(versionPost).to.equal('basic.js');
+
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
+        it('rollsback when `migrateOnStart` plugin/server option is `\'rollback\'`.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: true
+            }), (err, server1) => {
+
+                expect(err).to.not.exist();
+
+                server1.initialize((err) => {
+
+                    expect(err).to.not.exist();
+
+                    server1.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                        expect(err).to.not.exist();
+                        expect(versionPre).to.equal('basic.js');
+
+                        getServer({
+                            knex: server1.knex(),
+                            migrationsDir: './test/migrations/basic',
+                            migrateOnStart: 'rollback'
+                        }, (err, server2) => {
+
+                            expect(err).to.not.exist();
+
+                            expect(server1.knex()).to.shallow.equal(server2.knex());
+
+                            server2.initialize((err) => {
+
+                                expect(err).to.not.exist();
+
+                                server2.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                                    expect(err).to.not.exist();
+                                    expect(versionPost).to.equal('none');
+
+                                    done();
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+
+        it('accepts absolute `migrationsDir`s.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: Path.join(process.cwd(), 'test/migrations/basic'),
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.initialize((err) => {
+
+                    expect(err).to.not.exist();
+
+                    server.knex().migrate.currentVersion().asCallback((err, version) => {
+
+                        expect(err).to.not.exist();
+                        expect(version).to.equal('basic.js');
+
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('coalesces migrations in different directories across plugins sharing knex instances.', (done) => {
+
+            const makeKnex = () => {
+
+                return Knex({
+                    client: 'sqlite3',
+                    useNullAsDefault: true,
+                    connection: {
+                        filename: ':memory:'
+                    },
+                    migrations: {
+                        tableName: 'TestMigrations'
+                    }
+                });
+            };
+
+            const makePlugin = (id, knex, migrationsDir) => {
+
+                const plugin = (server, options, next) => {
+
+                    server.schwifty({ knex, migrationsDir });
+                    next();
+                };
+
+                plugin.attributes = { name: `plugin-${id}` };
+
+                return plugin;
+            };
+
+            const knex1 = makeKnex();
+            const knex2 = makeKnex();
+
+            getServer({
+                knex: knex1,
+                migrateOnStart: true
+            }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin1 = makePlugin(1, knex1, './test/migrations/basic');
+                const plugin2 = makePlugin(2, knex2, './test/migrations/basic');
+                const plugin3 = makePlugin(3, undefined, './test/migrations/extras-one');
+                const plugin4 = makePlugin(4, knex2, './test/migrations/extras-two');
+                const plugin5 = makePlugin(5, knex1);
+
+                server.register([
+                    plugin1,
+                    plugin2,
+                    plugin3,
+                    plugin4,
+                    plugin5
+                ], (err) => {
+
+                    expect(err).to.not.exist();
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        knex1('TestMigrations').columns('name').orderBy('name', 'asc').asCallback((err, migrations1) => {
+
+                            expect(err).to.not.exist();
+
+                            knex2('TestMigrations').columns('name').orderBy('name', 'asc').asCallback((err, migrations2) => {
+
+                                expect(err).to.not.exist();
+
+                                const getName = (x) => x.name;
+
+                                expect(migrations1.map(getName)).to.equal(['basic.js', 'extras-one-1st.js', 'extras-one-2nd.js']);
+                                expect(migrations2.map(getName)).to.equal(['basic.js', 'extras-two-1st.js', 'extras-two-2nd.js']);
+
+                                done();
+                            });
+                        });
+                    });
+                });
+            });
+        });
+
+        it('ignores non-migration files.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/non-migration',
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.initialize((err) => {
+
+                    expect(err).to.not.exist();
+
+                    server.knex().migrate.currentVersion().asCallback((err, version) => {
+
+                        expect(err).to.not.exist();
+
+                        // If 2nd-bad had run, that would be the current version, due to sort order
+                        expect(version).to.equal('1st-good.js');
+
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('bails when failing to make a temp migrations directory.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const origTmpDir = Tmp.dir;
+                Tmp.dir = (opts, cb) => {
+
+                    Tmp.dir = origTmpDir;
+                    cb(new Error('Generating temp dir failed.'));
+                };
+
+                server.initialize((err) => {
+
+                    expect(err).to.exist();
+                    expect(err.message).to.equal('Generating temp dir failed.');
+
+                    server.knex().migrate.currentVersion().asCallback((err, version) => {
+
+                        expect(err).to.not.exist();
+                        expect(version).to.equal('none');
+
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('bails when failing to read a migrations directory.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const origReaddir = Fs.readdir;
+                Fs.readdir = (opts, cb) => {
+
+                    Fs.readdir = origReaddir;
+                    cb(new Error('Reading migrations dir failed.'));
+                };
+
+                server.initialize((err) => {
+
+                    expect(err).to.exist();
+                    expect(err.message).to.equal('Reading migrations dir failed.');
+
+                    server.knex().migrate.currentVersion().asCallback((err, version) => {
+
+                        expect(err).to.not.exist();
+                        expect(version).to.equal('none');
+
+                        done();
+                    });
                 });
             });
         });
@@ -868,7 +1170,7 @@ describe('Schwifty', () => {
 
         it('solely return models registered in route\'s realm by default.', (done) => {
 
-            getServer(getOptions(true), (err, server) => {
+            getServer(getOptions({ models: ModelsFixture }), (err, server) => {
 
                 expect(err).not.to.exist();
 
@@ -993,7 +1295,7 @@ describe('Schwifty', () => {
 
         it('return models across all realms when passed true.', (done) => {
 
-            getServer(getOptions(true), (err, server) => {
+            getServer(getOptions({ models: ModelsFixture }), (err, server) => {
 
                 expect(err).not.to.exist();
 

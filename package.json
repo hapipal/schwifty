@@ -24,7 +24,8 @@
   "dependencies": {
     "hoek": "4.x.x",
     "items": "2.x.x",
-    "joi": "10.x.x"
+    "joi": "10.x.x",
+    "tmp": "0.0.31"
   },
   "peerDependencies": {
     "hapi": ">=10 <17",
