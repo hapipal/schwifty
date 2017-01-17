@@ -8,6 +8,8 @@ const Hapi = require('hapi');
 const Joi = require('joi');
 const Hoek = require('hoek');
 const Path = require('path');
+const Fs = require('fs');
+const Tmp = require('tmp');
 const Objection = require('objection');
 const Knex = require('knex');
 const ModelsFixture = require('./models');
@@ -353,6 +355,28 @@ describe('Schwifty', () => {
                 done();
             });
         });
+
+        it('throws when `migrateOnStart` is specified more than once.', (done) => {
+
+            getServer({ migrateOnStart: false }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.register({ register: Schwifty, options: { migrateOnStart: false } }, next);
+                };
+
+                plugin.attributes = { name: 'my-plugin' };
+
+                expect(() => {
+
+                    server.register(plugin, () => done(new Error('Should not make it here.')));
+                }).to.throw('Schwifty\'s migrateOnStart option can only be specified once.');
+
+                done();
+            });
+        });
     });
 
     describe('server.schwifty() decoration', () => {
@@ -685,12 +709,288 @@ describe('Schwifty', () => {
 
     describe('migrations', () => {
 
-        it('runs during server initialization only when `migrateOnStart` plugin/server option is specified.', (done) => done(new Error()));
-        it('accepts absolute and relative (to cwd) `migrationsDir`s.', (done) => done(new Error()));
-        it('coalesces migrations in different directories across plugins sharing knex instances.', (done) => done(new Error()));
-        it('ignores non-migration files.', (done) => done(new Error()));
-        it('bails when failing to make a temp migrations directory.', (done) => done(new Error()));
-        it('bails when failing to read a migrations directory.', (done) => done(new Error()));
+        it('does not run by default.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic'
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                    expect(err).to.not.exist();
+                    expect(versionPre).to.equal('none');
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                            expect(err).to.not.exist();
+                            expect(versionPost).to.equal('none');
+
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
+        it('does not run when `migrateOnStart` plugin/server option is `false`.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: false
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                    expect(err).to.not.exist();
+                    expect(versionPre).to.equal('none');
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                            expect(err).to.not.exist();
+                            expect(versionPost).to.equal('none');
+
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
+        it('runs when `migrateOnStart` plugin/server option is `true`.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                    expect(err).to.not.exist();
+                    expect(versionPre).to.equal('none');
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                            expect(err).to.not.exist();
+                            expect(versionPost).to.equal('basic.js');
+
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
+        it('accepts absolute `migrationsDir`s.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: Path.join(process.cwd(), 'test/migrations/basic'),
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.initialize((err) => {
+
+                    expect(err).to.not.exist();
+
+                    server.knex().migrate.currentVersion().asCallback((err, version) => {
+
+                        expect(err).to.not.exist();
+                        expect(version).to.equal('basic.js');
+
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('coalesces migrations in different directories across plugins sharing knex instances.', (done) => {
+
+            const makeKnex = () => {
+
+                return Knex({
+                    client: 'sqlite3',
+                    useNullAsDefault: true,
+                    connection: {
+                        filename: ':memory:'
+                    },
+                    migrations: {
+                        tableName: 'TestMigrations'
+                    }
+                });
+            };
+
+            const makePlugin = (id, knex, migrationsDir) => {
+
+                const plugin = (server, options, next) => {
+
+                    server.schwifty({ knex, migrationsDir });
+                    next();
+                };
+
+                plugin.attributes = { name: `plugin-${id}` };
+
+                return plugin;
+            };
+
+            const knex1 = makeKnex();
+            const knex2 = makeKnex();
+
+            getServer({
+                knex: knex1,
+                migrateOnStart: true
+            }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin1 = makePlugin(1, knex1, './test/migrations/basic');
+                const plugin2 = makePlugin(2, knex2, './test/migrations/basic');
+                const plugin3 = makePlugin(3, undefined, './test/migrations/extras-one');
+                const plugin4 = makePlugin(4, knex2, './test/migrations/extras-two');
+                const plugin5 = makePlugin(5, knex1);
+
+                server.register([
+                    plugin1,
+                    plugin2,
+                    plugin3,
+                    plugin4,
+                    plugin5
+                ], (err) => {
+
+                    expect(err).to.not.exist();
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        knex1('TestMigrations').columns('name').orderBy('name', 'asc').asCallback((err, migrations1) => {
+
+                            expect(err).to.not.exist();
+
+                            knex2('TestMigrations').columns('name').orderBy('name', 'asc').asCallback((err, migrations2) => {
+
+                                expect(err).to.not.exist();
+
+                                const getName = (x) => x.name;
+
+                                expect(migrations1.map(getName)).to.equal(['basic.js', 'extras-one-1st.js', 'extras-one-2nd.js']);
+                                expect(migrations2.map(getName)).to.equal(['basic.js', 'extras-two-1st.js', 'extras-two-2nd.js']);
+
+                                done();
+                            });
+                        });
+                    });
+                });
+            });
+        });
+
+        it('ignores non-migration files.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/non-migration',
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.initialize((err) => {
+
+                    expect(err).to.not.exist();
+
+                    server.knex().migrate.currentVersion().asCallback((err, version) => {
+
+                        expect(err).to.not.exist();
+
+                        // If 2nd-bad had run, that would be the current version, due to sort order
+                        expect(version).to.equal('1st-good.js');
+
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('bails when failing to make a temp migrations directory.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const origTmpDir = Tmp.dir;
+                Tmp.dir = (opts, cb) => {
+
+                    Tmp.dir = origTmpDir;
+                    cb(new Error('Generating temp dir failed.'));
+                };
+
+                server.initialize((err) => {
+
+                    expect(err).to.exist();
+                    expect(err.message).to.equal('Generating temp dir failed.');
+
+                    server.knex().migrate.currentVersion().asCallback((err, version) => {
+
+                        expect(err).to.not.exist();
+                        expect(version).to.equal('none');
+
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('bails when failing to read a migrations directory.', (done) => {
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const origReaddir = Fs.readdir;
+                Fs.readdir = (opts, cb) => {
+
+                    Fs.readdir = origReaddir;
+                    cb(new Error('Reading migrations dir failed.'));
+                };
+
+                server.initialize((err) => {
+
+                    expect(err).to.exist();
+                    expect(err.message).to.equal('Reading migrations dir failed.');
+
+                    server.knex().migrate.currentVersion().asCallback((err, version) => {
+
+                        expect(err).to.not.exist();
+                        expect(version).to.equal('none');
+
+                        done();
+                    });
+                });
+            });
+        });
     });
 
     describe('request.models() and server.models() decorations', () => {
