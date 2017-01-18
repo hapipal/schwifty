@@ -1838,6 +1838,65 @@ describe('Schwifty', () => {
 
                 done();
             });
+
+            it('if set, prefers set value.', (done) => {
+
+                // Not affected by parent class
+
+                Schwifty.Model.jsonAttributes = false;
+
+                const ModelOne = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object();
+                    }
+                };
+
+                expect(ModelOne.jsonAttributes).to.equal([]);
+
+                // Prefers own set value
+
+                const ModelTwo = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object();
+                    }
+                };
+
+                ModelTwo.jsonAttributes = false;
+
+                expect(ModelTwo.jsonAttributes).to.equal(false);
+
+                done();
+            });
+        });
+
+        describe('static setter jsonAttributes', () => {
+
+            // A quick dip into unit (vs behavioral) testing!
+            it('sets _jsonAttributesMemo', (done) => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            arr: Joi.array(),
+                            obj: Joi.object(),
+                            str: Joi.string(),
+                            num: Joi.number()
+                        });
+                    }
+                };
+
+                const jsonAttrs = Model.jsonAttributes;
+                expect(jsonAttrs).to.equal(['arr', 'obj']);
+                expect(jsonAttrs).to.shallow.equal(Model._jsonAttributesMemo);
+
+                const emptyJsonAttrs = Model.jsonAttributes = [];
+                expect(emptyJsonAttrs).to.shallow.equal(Model._jsonAttributesMemo);
+
+                done();
+            });
         });
     });
 });
