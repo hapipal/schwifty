@@ -1642,5 +1642,28 @@ describe('Schwifty', () => {
                 done();
             });
         });
+
+        describe('static setter jsonAttributes', () => {
+
+            it('sets _jsonAttributesMemo', (done) => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            arr: Joi.array(),
+                            obj: Joi.object(),
+                            str: Joi.string(),
+                            num: Joi.number()
+                        });
+                    }
+                };
+
+                const jsonAttrs = Model.jsonAttributes;
+                expect(jsonAttrs).to.shallow.equal(Model._jsonAttributesMemo);
+
+                done();
+            });
+        });
     });
 });
