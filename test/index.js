@@ -12,9 +12,7 @@ const Fs = require('fs');
 const Tmp = require('tmp');
 const Objection = require('objection');
 const Knex = require('knex');
-const ModelsFixture = require('./models');
-const ZombieModel = require('./models-zombie');
-const MovieModel = require('./models-movie');
+const TestModels = require('./models');
 const Schwifty = require('..');
 
 
@@ -60,7 +58,7 @@ describe('Schwifty', () => {
         });
     };
 
-    const modelsFile = './models.js';
+    const modelsFile = './models/as-file.js';
 
     const state = (server) => {
 
@@ -83,7 +81,12 @@ describe('Schwifty', () => {
 
     it('connects models to knex instance during onPreStart.', (done) => {
 
-        const config = getOptions({ models: ModelsFixture });
+        const config = getOptions({
+            models: [
+                TestModels.Dog,
+                TestModels.Person
+            ]
+        });
 
         getServer(config, (err, server) => {
 
@@ -144,7 +147,12 @@ describe('Schwifty', () => {
 
                 const plugin1 = (srv, opts, next) => {
 
-                    srv.schwifty(getOptions({ models: ModelsFixture }));
+                    srv.schwifty(getOptions({
+                        models: [
+                            TestModels.Dog,
+                            TestModels.Person
+                        ]
+                    }));
 
                     // Monkeypatch the destroy func
                     const oldDestroy = srv.knex().destroy;
@@ -161,7 +169,7 @@ describe('Schwifty', () => {
 
                 const plugin2 = (srv, opts, next) => {
 
-                    srv.schwifty([ZombieModel]);
+                    srv.schwifty([TestModels.Zombie]);
 
                     // Plugin 2 will use server.root's knex connection
                     expect(srv.knex()).to.shallow.equal(srv.root.knex());
@@ -240,14 +248,19 @@ describe('Schwifty', () => {
 
     it('can be registered multiple times.', (done) => {
 
-        getServer(getOptions({ models: ModelsFixture }), (err, server) => {
+        getServer(getOptions({
+            models: [
+                TestModels.Dog,
+                TestModels.Person
+            ]
+        }), (err, server) => {
 
             expect(err).to.not.exist();
             expect(server.registrations.schwifty).to.exist();
 
             server.register({
                 register: Schwifty,
-                options: { models: [MovieModel, ZombieModel] }
+                options: { models: [TestModels.Movie, TestModels.Zombie] }
             }, (err) => {
 
                 expect(err).not.to.exist();
@@ -302,7 +315,12 @@ describe('Schwifty', () => {
 
         it('takes `models` option as an array of objects.', (done) => {
 
-            const options = getOptions({ models: ModelsFixture });
+            const options = getOptions({
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            });
 
             getServer(options, (err, server) => {
 
@@ -383,7 +401,12 @@ describe('Schwifty', () => {
 
         it('aggregates models across plugins.', (done) => {
 
-            const options = getOptions({ models: ModelsFixture });
+            const options = getOptions({
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            });
 
             getServer(options, (err, server) => {
 
@@ -392,7 +415,7 @@ describe('Schwifty', () => {
                 const plugin1 = (srv, opts, next) => {
 
                     srv.schwifty({
-                        models: [MovieModel]
+                        models: [TestModels.Movie]
                     });
                     next();
                 };
@@ -402,7 +425,7 @@ describe('Schwifty', () => {
                 const plugin2 = (srv, opts, next) => {
 
                     srv.schwifty({
-                        models: [ZombieModel]
+                        models: [TestModels.Zombie]
                     });
                     next();
                 };
@@ -433,7 +456,12 @@ describe('Schwifty', () => {
 
         it('aggregates model definitions within a plugin.', (done) => {
 
-            getServer(getOptions({ models: ModelsFixture }), (err, server) => {
+            getServer(getOptions({
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }), (err, server) => {
 
                 expect(err).to.not.exist();
 
@@ -443,10 +471,10 @@ describe('Schwifty', () => {
                 const plugin = (srv, opts, next) => {
 
                     srv.schwifty({
-                        models: [MovieModel]
+                        models: [TestModels.Movie]
                     });
                     srv.schwifty({
-                        models: [ZombieModel]
+                        models: [TestModels.Zombie]
                     });
 
                     srv.app.myState = state(srv);
@@ -486,7 +514,7 @@ describe('Schwifty', () => {
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty(ZombieModel);
+                    srv.schwifty(TestModels.Zombie);
                     next();
                 };
 
@@ -556,13 +584,18 @@ describe('Schwifty', () => {
 
         it('throws on model name collision.', (done) => {
 
-            getServer(getOptions({ models: ModelsFixture }), (err, server) => {
+            getServer(getOptions({
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }), (err, server) => {
 
                 expect(err).to.not.exist();
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty(ModelsFixture[0]);
+                    srv.schwifty(TestModels.Dog);
                     next();
                 };
 
@@ -585,13 +618,18 @@ describe('Schwifty', () => {
 
         it('allows plugins to have a different knex instances than the root server', (done) => {
 
-            getServer(getOptions({ models: ModelsFixture }), (err, server) => {
+            getServer(getOptions({
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }), (err, server) => {
 
                 expect(err).to.not.exist();
 
                 const plugin1 = (srv, opts, next) => {
 
-                    srv.schwifty(ZombieModel);
+                    srv.schwifty(TestModels.Zombie);
 
                     srv.route({
                         path: '/pluginOne',
@@ -612,7 +650,7 @@ describe('Schwifty', () => {
 
                 const plugin2 = (srv, opts, next) => {
 
-                    const options = getOptions({ models: [MovieModel] }); // New knex instance
+                    const options = getOptions({ models: [TestModels.Movie] }); // New knex instance
 
                     srv.schwifty(options);
 
@@ -679,19 +717,18 @@ describe('Schwifty', () => {
 
         it('throws when multiple knex instances passed to same plugin', (done) => {
 
-            getServer(getOptions(), (err, server) => {
+            getServer({}, (err, server) => {
 
                 expect(err).to.not.exist();
                 expect(server.registrations.schwifty).to.exist();
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty(getOptions());
+                    srv.schwifty({ knex: Knex({}) });
 
                     expect(() => {
 
-                        // Just pass in some different looking options
-                        srv.schwifty(getOptions({ models: ModelsFixture }));
+                        srv.schwifty({ knex: Knex({}) });
                     }).to.throw('A knex instance/config may be specified only once per server or plugin.');
 
                     done();
@@ -1170,7 +1207,12 @@ describe('Schwifty', () => {
 
         it('solely return models registered in route\'s realm by default.', (done) => {
 
-            getServer(getOptions({ models: ModelsFixture }), (err, server) => {
+            getServer(getOptions({
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }), (err, server) => {
 
                 expect(err).not.to.exist();
 
@@ -1197,7 +1239,7 @@ describe('Schwifty', () => {
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty(MovieModel);
+                    srv.schwifty(TestModels.Movie);
                     srv.route({
                         path: '/plugin',
                         method: 'get',
@@ -1295,7 +1337,12 @@ describe('Schwifty', () => {
 
         it('return models across all realms when passed true.', (done) => {
 
-            getServer(getOptions({ models: ModelsFixture }), (err, server) => {
+            getServer(getOptions({
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }), (err, server) => {
 
                 expect(err).not.to.exist();
 
@@ -1324,7 +1371,7 @@ describe('Schwifty', () => {
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty([ZombieModel]);
+                    srv.schwifty([TestModels.Zombie]);
                     srv.route({
                         path: '/plugin',
                         method: 'get',
@@ -1382,7 +1429,7 @@ describe('Schwifty', () => {
 
             it('validates correct schema input.', (done) => {
 
-                const chompy = new ZombieModel();
+                const chompy = new TestModels.Zombie();
 
                 const validateRes = chompy.$validate({
                     firstName: 'Chompy',
@@ -1400,7 +1447,7 @@ describe('Schwifty', () => {
 
             it('defaults to validate itself if no json passed.', (done) => {
 
-                const chompy = new ZombieModel();
+                const chompy = new TestModels.Zombie();
                 chompy.firstName = 'Chompy';
 
                 const validateRes = chompy.$validate();
@@ -1415,7 +1462,7 @@ describe('Schwifty', () => {
 
             it('throws Objection.ValidationError if required schema item not provided to $validate().', (done) => {
 
-                const chompy = new ZombieModel();
+                const chompy = new TestModels.Zombie();
 
                 expect(() => {
 
@@ -1429,7 +1476,7 @@ describe('Schwifty', () => {
 
             it('throws Objection.ValidationError if bad types are passed.', (done) => {
 
-                const chompy = new ZombieModel();
+                const chompy = new TestModels.Zombie();
 
                 expect(() => {
 
@@ -1458,7 +1505,7 @@ describe('Schwifty', () => {
 
             it('skips validation when `skipValidation` option is passed to $validate().', (done) => {
 
-                const chompy = new ZombieModel();
+                const chompy = new TestModels.Zombie();
 
                 const whateverSchema = {
                     anything: 'goes',
