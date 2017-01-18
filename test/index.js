@@ -953,6 +953,141 @@ describe('Schwifty', () => {
                 });
             });
         });
+
+        describe('bails when a knex instance is not pingable', () => {
+
+            const failKnexWith = (knex, error) => {
+
+                knex.queryBuilder = () => ({
+                    select: () => ({
+                        asCallback: (cb) => cb(error)
+                    })
+                });
+
+                return knex;
+            };
+
+            it('and lists associated models in error.', (done) => {
+
+                const knex = failKnexWith(makeKnex(), new Error());
+
+                getServer({ knex, models: [TestModels.Dog] }, (err, server) => {
+
+                    expect(err).to.not.exist();
+
+                    const plugin = (srv, opts, next) => {
+
+                        srv.schwifty(TestModels.Person);
+                        next();
+                    };
+
+                    plugin.attributes = { name: 'plugin' };
+
+                    server.register(plugin, (err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.initialize((err) => {
+
+                            expect(err).to.exist();
+                            expect(err.message).to.startWith('Could not connect to database using schwifty knex instance for models: "Dog", "Person".');
+
+                            done();
+                        });
+                    });
+                });
+            });
+
+            it('and doesn\'t list associated models in error when there are none.', (done) => {
+
+                const knex = failKnexWith(makeKnex(), new Error());
+
+                getServer({ knex }, (err, server) => {
+
+                    expect(err).to.not.exist();
+
+                    server.initialize((err) => {
+
+                        expect(err).to.exist();
+                        expect(err.message).to.startWith('Could not connect to database using schwifty knex instance.');
+
+                        done();
+                    });
+                });
+            });
+
+            it('and augments the original error\'s message.', (done) => {
+
+                const error = new Error('Also this other thing went wrong.');
+                const knex = failKnexWith(makeKnex(), error);
+
+                getServer({ knex }, (err, server) => {
+
+                    expect(err).to.not.exist();
+
+                    server.initialize((err) => {
+
+                        expect(err).to.exist();
+                        expect(err).to.shallow.equal(error);
+                        expect(err.message).to.equal('Could not connect to database using schwifty knex instance.: Also this other thing went wrong.');
+
+                        done();
+                    });
+                });
+            });
+
+            it('and adds a message to the original error if it did not already have one.', (done) => {
+
+                const error = new Error();
+                const knex = failKnexWith(makeKnex(), error);
+
+                getServer({ knex }, (err, server) => {
+
+                    expect(err).to.not.exist();
+
+                    server.initialize((err) => {
+
+                        expect(err).to.exist();
+                        expect(err).to.shallow.equal(error);
+                        expect(err.message).to.equal('Could not connect to database using schwifty knex instance.');
+
+                        done();
+                    });
+                });
+            });
+
+            it('and only requires one not be pingable to fail.', (done) => {
+
+                getServer({ knex: makeKnex() }, (err, server) => {
+
+                    expect(err).to.not.exist();
+
+                    const error = new Error();
+                    const knex = failKnexWith(makeKnex(), error);
+
+                    const plugin = (srv, opts, next) => {
+
+                        srv.schwifty({ knex });
+                        next();
+                    };
+
+                    plugin.attributes = { name: 'plugin' };
+
+                    server.register(plugin, (err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.initialize((err) => {
+
+                            expect(err).to.exist();
+                            expect(err).to.shallow.equal(error);
+
+                            done();
+                        });
+                    });
+                });
+            });
+        });
     });
 
     describe('migrations', () => {
