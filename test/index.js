@@ -648,7 +648,6 @@ describe('Schwifty', () => {
             });
         });
 
-
         it('throws when multiple knex instances passed to same plugin.', (done) => {
 
             getServer({}, (err, server) => {
