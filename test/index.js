@@ -409,6 +409,27 @@ describe('Schwifty', () => {
                 done();
             });
         });
+
+        it('throws when multiple knex instances passed to same server.', (done) => {
+
+            getServer({ knex: Knex({}) }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                expect(() => {
+
+                    server.register({
+                        register: Schwifty,
+                        options: { knex: Knex({}) }
+                    }, (ignoreErr) => {
+
+                        return done(new Error('Should not make it here.'));
+                    });
+                }).to.throw('A knex instance/config may be specified only once per server or plugin.');
+
+                done();
+            });
+        });
     });
 
     describe('server.schwifty() decoration', () => {
@@ -626,6 +647,31 @@ describe('Schwifty', () => {
                 done();
             });
         });
+
+
+        it('throws when multiple knex instances passed to same plugin.', (done) => {
+
+            getServer({}, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.schwifty({ knex: Knex({}) });
+
+                    expect(() => {
+
+                        srv.schwifty({ knex: Knex({}) });
+                    }).to.throw('A knex instance/config may be specified only once per server or plugin.');
+
+                    next();
+                };
+
+                plugin.attributes = { name: 'my-plugin' };
+
+                server.register(plugin, done);
+            });
+        });
     });
 
     describe('request.knex() and server.knex() decorations', () => {
@@ -754,51 +800,6 @@ describe('Schwifty', () => {
                         done();
                     });
                 });
-            });
-        });
-
-        it('throws when multiple knex instances passed to same server.', (done) => {
-
-            getServer({ knex: Knex({}) }, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                expect(() => {
-
-                    server.register({
-                        register: Schwifty,
-                        options: { knex: Knex({}) }
-                    }, (ignoreErr) => {
-
-                        return done(new Error('Should not make it here.'));
-                    });
-                }).to.throw('A knex instance/config may be specified only once per server or plugin.');
-
-                done();
-            });
-        });
-
-        it('throws when multiple knex instances passed to same plugin.', (done) => {
-
-            getServer({}, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
-
-                    srv.schwifty({ knex: Knex({}) });
-
-                    expect(() => {
-
-                        srv.schwifty({ knex: Knex({}) });
-                    }).to.throw('A knex instance/config may be specified only once per server or plugin.');
-
-                    next();
-                };
-
-                plugin.attributes = { name: 'my-plugin' };
-
-                server.register(plugin, done);
             });
         });
     });
