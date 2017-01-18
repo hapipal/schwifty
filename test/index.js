@@ -1859,6 +1859,9 @@ describe('Schwifty', () => {
                 const jsonAttrs = Model.jsonAttributes;
                 expect(jsonAttrs).to.equal(Model._jsonAttributesMemo);
 
+                Model.jsonAttributes = [];
+                expect(Model._jsonAttributesMemo).to.equal([]);
+
                 done();
             });
         });
