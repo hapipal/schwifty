@@ -40,6 +40,20 @@ describe('Schwifty', () => {
         return Hoek.applyToDefaults(options, extras || {});
     };
 
+    const makeKnex = () => {
+
+        return Knex({
+            client: 'sqlite3',
+            useNullAsDefault: true,
+            connection: {
+                filename: ':memory:'
+            },
+            migrations: {
+                tableName: 'TestMigrations'
+            }
+        });
+    };
+
     const getServer = (options, cb) => {
 
         const server = new Hapi.Server();
@@ -395,6 +409,27 @@ describe('Schwifty', () => {
                 done();
             });
         });
+
+        it('throws when multiple knex instances passed to same server.', (done) => {
+
+            getServer({ knex: Knex({}) }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                expect(() => {
+
+                    server.register({
+                        register: Schwifty,
+                        options: { knex: Knex({}) }
+                    }, (ignoreErr) => {
+
+                        return done(new Error('Should not make it here.'));
+                    });
+                }).to.throw('A knex instance/config may be specified only once per server or plugin.');
+
+                done();
+            });
+        });
     });
 
     describe('server.schwifty() decoration', () => {
@@ -612,107 +647,6 @@ describe('Schwifty', () => {
                 done();
             });
         });
-    });
-
-    describe('request.knex() and server.knex() decorations', () => {
-
-        it('allows plugins to have a different knex instances than the root server.', (done) => {
-
-            getServer(getOptions({
-                models: [
-                    TestModels.Dog,
-                    TestModels.Person
-                ]
-            }), (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin1 = (srv, opts, next) => {
-
-                    srv.schwifty(TestModels.Zombie);
-
-                    srv.route({
-                        path: '/pluginOne',
-                        method: 'get',
-                        handler: (request, reply) => {
-
-                            expect(request.knex()).to.shallow.equal(srv.root.knex());
-                            reply({ ok: true });
-                        }
-                    });
-
-                    // This plugin only passes in models so it's connection is the default (same as root server)
-                    expect(srv.knex()).to.shallow.equal(srv.root.knex());
-                    next();
-                };
-
-                plugin1.attributes = { name: 'plugin-one' };
-
-                const plugin2 = (srv, opts, next) => {
-
-                    const options = getOptions({ models: [TestModels.Movie] }); // New knex instance
-
-                    srv.schwifty(options);
-
-                    srv.route({
-                        path: '/pluginTwo',
-                        method: 'get',
-                        handler: (request, reply) => {
-
-                            expect(request.knex()).to.not.shallow.equal(srv.root.knex());
-                            reply({ ok: true });
-                        }
-                    });
-
-                    expect(srv.knex()).to.not.shallow.equal(srv.root.knex());
-                    next();
-                };
-
-                plugin2.attributes = { name: 'plugin-two' };
-
-                server.register([plugin1, plugin2], (err) => {
-
-                    expect(err).to.not.exist();
-
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        server.inject({ url: '/pluginOne', method: 'get' }, (res1) => {
-
-                            expect(res1.result).to.equal({ ok: true });
-
-                            server.inject({ url: '/pluginTwo', method: 'get' }, (res2) => {
-
-                                expect(res2.result).to.equal({ ok: true });
-                                done();
-                            });
-                        });
-                    });
-                });
-            });
-        });
-
-        it('throws when multiple knex instances passed to same server.', (done) => {
-
-            getServer({ knex: Knex({}) }, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                expect(() => {
-
-                    server.register({
-                        register: Schwifty,
-                        options: { knex: Knex({}) }
-                    }, (ignoreErr) => {
-
-                        return done(new Error('Should not make it here.'));
-                    });
-                }).to.throw('A knex instance/config may be specified only once per server or plugin.');
-
-                done();
-            });
-        });
 
         it('throws when multiple knex instances passed to same plugin.', (done) => {
 
@@ -735,6 +669,288 @@ describe('Schwifty', () => {
                 plugin.attributes = { name: 'my-plugin' };
 
                 server.register(plugin, done);
+            });
+        });
+    });
+
+    describe('request.knex() and server.knex() decorations', () => {
+
+        it('returns root server\'s knex instance by default.', (done) => {
+
+            const knex = makeKnex();
+
+            getServer({ knex }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.route({
+                        path: '/plugin',
+                        method: 'get',
+                        handler: (request, reply) => {
+
+                            expect(request.knex()).to.shallow.equal(knex);
+                            reply({ ok: true });
+                        }
+                    });
+
+                    expect(srv.knex()).to.shallow.equal(knex);
+                    next();
+                };
+
+                plugin.attributes = { name: 'plugin' };
+
+                server.register(plugin, (err) => {
+
+                    expect(err).to.not.exist();
+
+                    // Root server's knex
+                    expect(server.knex()).to.shallow.equal(knex);
+
+                    server.inject('/plugin', (res) => {
+
+                        expect(res.result).to.equal({ ok: true });
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('returns plugin\'s knex instance over root server\'s.', (done) => {
+
+            const knex1 = makeKnex();
+            const knex2 = makeKnex();
+
+            getServer({ knex: knex1 }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.schwifty({ knex: knex2 });
+
+                    srv.route({
+                        path: '/plugin',
+                        method: 'get',
+                        handler: (request, reply) => {
+
+                            expect(request.knex()).to.shallow.equal(knex2);
+                            reply({ ok: true });
+                        }
+                    });
+
+                    expect(srv.knex()).to.shallow.equal(knex2);
+                    next();
+                };
+
+                plugin.attributes = { name: 'plugin' };
+
+                server.register(plugin, (err) => {
+
+                    expect(err).to.not.exist();
+
+                    // Root server's knex
+                    expect(server.knex()).to.shallow.equal(knex1);
+
+                    server.inject('/plugin', (res) => {
+
+                        expect(res.result).to.equal({ ok: true });
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('returns null when there are no plugin or root knex instances.', (done) => {
+
+            getServer({}, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.route({
+                        path: '/plugin',
+                        method: 'get',
+                        handler: (request, reply) => {
+
+                            expect(request.knex()).to.equal(null);
+                            reply({ ok: true });
+                        }
+                    });
+
+                    expect(srv.knex()).to.equal(null);
+                    next();
+                };
+
+                plugin.attributes = { name: 'plugin' };
+
+                server.register(plugin, (err) => {
+
+                    expect(err).to.not.exist();
+
+                    // Root server's non-knex
+                    expect(server.knex()).to.equal(null);
+
+                    server.inject('/plugin', (res) => {
+
+                        expect(res.result).to.equal({ ok: true });
+                        done();
+                    });
+                });
+            });
+        });
+    });
+
+    describe('server initialization', () => {
+
+        it('binds knex instances to models.', (done) => {
+
+            const knex = makeKnex();
+
+            getServer({ knex, models: [TestModels.Person] }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                expect(server.models().Person.knex()).to.equal(null);
+
+                server.initialize((err) => {
+
+                    expect(err).to.not.exist();
+
+                    expect(server.models().Person.knex()).to.shallow.equal(knex);
+
+                    done();
+                });
+            });
+        });
+
+        it('binds root knex instance to plugins\' models by default.', (done) => {
+
+            const knex = makeKnex();
+
+            getServer({ knex }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.schwifty(TestModels.Person);
+                    next();
+                };
+
+                plugin.attributes = { name: 'plugin' };
+
+                server.register(plugin, (err) => {
+
+                    expect(err).to.not.exist();
+
+                    expect(server.models(true).Person.knex()).to.equal(null);
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        expect(server.models(true).Person.knex()).to.shallow.equal(knex);
+
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('binds plugins\' knex instance to plugins\' models over roots\'.', (done) => {
+
+            const knex1 = makeKnex();
+            const knex2 = makeKnex();
+
+            getServer({ knex: knex1 }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.schwifty({ knex: knex2, models: [TestModels.Person] });
+                    next();
+                };
+
+                plugin.attributes = { name: 'plugin' };
+
+                server.register(plugin, (err) => {
+
+                    expect(err).to.not.exist();
+
+                    expect(server.models(true).Person.knex()).to.equal(null);
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        expect(server.models(true).Person.knex()).to.shallow.equal(knex2);
+
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('does not bind knex instance to models when there are no plugin or root knex instances.', (done) => {
+
+            getServer({}, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                const plugin = (srv, opts, next) => {
+
+                    srv.schwifty(TestModels.Person);
+                    next();
+                };
+
+                plugin.attributes = { name: 'plugin' };
+
+                server.register(plugin, (err) => {
+
+                    expect(err).to.not.exist();
+
+                    expect(server.models(true).Person.knex()).to.equal(null);
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        expect(server.models(true).Person.knex()).to.equal(null);
+
+                        done();
+                    });
+                });
+            });
+        });
+
+        it('does not bind knex instance when model already has a knex instance.', (done) => {
+
+            const knex1 = makeKnex();
+            const knex2 = makeKnex();
+
+            const Person = class Person extends TestModels.Person {};
+            Person.knex(knex2);
+
+            getServer({ knex: knex1, models: [Person] }, (err, server) => {
+
+                expect(err).to.not.exist();
+
+                expect(server.models().Person).to.shallow.equal(Person);
+                expect(server.models().Person.knex()).to.shallow.equal(knex2);
+
+                server.initialize((err) => {
+
+                    expect(err).to.not.exist();
+
+                    expect(server.models().Person).to.shallow.equal(Person);
+                    expect(server.models().Person.knex()).to.shallow.equal(knex2);
+
+                    done();
+                });
             });
         });
     });
@@ -931,20 +1147,6 @@ describe('Schwifty', () => {
         });
 
         it('coalesces migrations in different directories across plugins sharing knex instances.', (done) => {
-
-            const makeKnex = () => {
-
-                return Knex({
-                    client: 'sqlite3',
-                    useNullAsDefault: true,
-                    connection: {
-                        filename: ':memory:'
-                    },
-                    migrations: {
-                        tableName: 'TestMigrations'
-                    }
-                });
-            };
 
             const makePlugin = (id, knex, migrationsDir) => {
 
