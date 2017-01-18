@@ -1660,7 +1660,7 @@ describe('Schwifty', () => {
                 };
 
                 const jsonAttrs = Model.jsonAttributes;
-                expect(jsonAttrs).to.shallow.equal(Model._jsonAttributesMemo);
+                expect(jsonAttrs).to.equal(Model._jsonAttributesMemo);
 
                 done();
             });
