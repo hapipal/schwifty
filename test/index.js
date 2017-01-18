@@ -556,7 +556,7 @@ describe('Schwifty', () => {
             });
         });
 
-        it('throws on invalid config', (done) => {
+        it('throws on invalid config.', (done) => {
 
             getServer(getOptions(), (err, server) => {
 
@@ -616,7 +616,7 @@ describe('Schwifty', () => {
 
     describe('request.knex() and server.knex() decorations', () => {
 
-        it('allows plugins to have a different knex instances than the root server', (done) => {
+        it('allows plugins to have a different knex instances than the root server.', (done) => {
 
             getServer(getOptions({
                 models: [
@@ -693,18 +693,17 @@ describe('Schwifty', () => {
             });
         });
 
-        it('throws when multiple knex instances passed to same server', (done) => {
+        it('throws when multiple knex instances passed to same server.', (done) => {
 
-            getServer(getOptions(), (err, server) => {
+            getServer({ knex: Knex({}) }, (err, server) => {
 
                 expect(err).to.not.exist();
-                expect(server.registrations.schwifty).to.exist();
 
                 expect(() => {
 
                     server.register({
                         register: Schwifty,
-                        options: getOptions()
+                        options: { knex: Knex({}) }
                     }, (ignoreErr) => {
 
                         return done(new Error('Should not make it here.'));
@@ -715,12 +714,11 @@ describe('Schwifty', () => {
             });
         });
 
-        it('throws when multiple knex instances passed to same plugin', (done) => {
+        it('throws when multiple knex instances passed to same plugin.', (done) => {
 
             getServer({}, (err, server) => {
 
                 expect(err).to.not.exist();
-                expect(server.registrations.schwifty).to.exist();
 
                 const plugin = (srv, opts, next) => {
 
@@ -731,15 +729,12 @@ describe('Schwifty', () => {
                         srv.schwifty({ knex: Knex({}) });
                     }).to.throw('A knex instance/config may be specified only once per server or plugin.');
 
-                    done();
+                    next();
                 };
 
                 plugin.attributes = { name: 'my-plugin' };
 
-                server.register(plugin, (ignoreErr) => {
-
-                    throw new Error('Shouldn\'t make it here');
-                });
+                server.register(plugin, done);
             });
         });
     });
@@ -1136,7 +1131,7 @@ describe('Schwifty', () => {
             });
         });
 
-        it('return empty object if no models have been added', (done) => {
+        it('return empty object if no models have been added.', (done) => {
 
             getServer(getOptions(), (err, server) => {
 
