@@ -21,13 +21,12 @@ server.connection({ port: 3000 });
 
 server.route({
     method: 'get',
-    path: '/dogs/{name}',
+    path: '/dogs/{id}',
     handler: function (request, reply) {
 
-        const Dogs = request.models().Dogs;
-        const name = request.params.name;
+        const Dog = request.models().Dog;
 
-        reply(Dogs.query().where({ name }));
+        reply(Dog.query().findById(request.params.id));
     }
 });
 
@@ -41,13 +40,11 @@ server.register({
             }
         }
     }
-}, (err) => {
-
-    if (err) {
-        throw err;
-    }
+})
+.then(() => {
 
     // Register a model with schwifty
+
     server.schwifty(
         class Dog extends Schwifty.Model {
             static get tableName() {
@@ -58,36 +55,50 @@ server.register({
             static get joiSchema() {
 
                 return Joi.object({
+                    id: Joi.number(),
                     name: Joi.string(),
                 });
             }
         }
     );
 
-    server.start((err) => {
+    // Initialize the server, connecting your models to knex...
+    return server.initialize();
+})
+.then(() => {
+    // ... then make a table...
 
-        if (err) {
-            throw err;
-        }
+    const knex = server.knex();
 
-        // Add some records
+    return knex.schema.createTable('Dog', (t) => {
 
-        const Dogs = server.models().Dogs;
-
-        Promise.all([
-            Dogs.query().insert({ name: 'Guinness' }),
-            Dogs.query().insert({ name: 'Sully' }),
-            Dogs.query().insert({ name: 'Ren' })
-        ])
-        .then(() => {
-
-            console.log(`Go find some dogs at ${server.info.uri}`);
-        })
-        .catch((err) => {
-
-            console.error(err);
-        });
+        t.increments('id').primary();
+        t.string('name');
     });
+})
+.then(() => {
+    // ... then add some records ...
+
+    const Dog = server.models().Dog;
+
+    return Promise.all([
+        Dog.query().insert({ name: 'Guinness' }),
+        Dog.query().insert({ name: 'Sully' }),
+        Dog.query().insert({ name: 'Ren' })
+    ])
+})
+.then(() => {
+    // ... then start the server!
+
+    return server.start();
+})
+.then(() => {
+
+    console.log(`Now, go find some dogs at ${server.info.uri}!`);
+})
+.catch((err) => {
+
+    console.error(err);
 });
 ```
 
