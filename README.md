@@ -56,7 +56,7 @@ server.register({
 
                 return Joi.object({
                     id: Joi.number(),
-                    name: Joi.string(),
+                    name: Joi.string()
                 });
             }
         }
@@ -66,7 +66,7 @@ server.register({
     return server.initialize();
 })
 .then(() => {
-    // ... then make a table...
+    // ... then make a table ...
 
     const knex = server.knex();
 
@@ -85,7 +85,7 @@ server.register({
         Dog.query().insert({ name: 'Guinness' }),
         Dog.query().insert({ name: 'Sully' }),
         Dog.query().insert({ name: 'Ren' })
-    ])
+    ]);
 })
 .then(() => {
     // ... then start the server!
@@ -99,6 +99,7 @@ server.register({
 .catch((err) => {
 
     console.error(err);
+    process.exit(1);
 });
 ```
 
