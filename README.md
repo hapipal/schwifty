@@ -40,6 +40,7 @@ server.register({
     options: {
         knex: {
             client: 'sqlite3',
+            useNullAsDefault: true,
             connection: {
                 filename: ':memory:'
             }
