@@ -69,6 +69,9 @@ An optional [`Joi.object()`](https://github.com/hapijs/joi/blob/master/API.md#ob
 ### `jsonAttributes`
 This property is computed as a getter using the contents of `joiSchema`.  Any of the schema's keys that are [`Joi.object()`](https://github.com/hapijs/joi/blob/master/API.md#object)s or [`Joi.array()`](https://github.com/hapijs/joi/blob/master/API.md#array)s will be included in the list of JSON attributes.  If this property is set, it will forget about having been computed.  For more info, see objection's [`jsonAttributes`](http://vincit.github.io/objection.js/#jsonattributes).
 
+### `getJoiSchema([patch])`
+Returns the [`joiSchema`](#joischema) and memoizes the result.  This is useful when `joiSchema` is set as a getter, but you'd like to avoid constantly recompiling the Joi when accessing it.  Past memoization is forgotten by extended classes.  When `patch` is `true`, the same schema is returned (and memoized separately), but set so that it ignores default values and missing required fields.
+
 ### `parseJoiValidationError(joiValidation)`
 Extracts the details of a Joi error for use as the contents of an objection [`ValidationError`](http://vincit.github.io/objection.js/#validationerror).
 

@@ -1908,6 +1908,33 @@ describe('Schwifty', () => {
 
                 done();
             });
+
+            it('forgets past memoization on extended classes.', (done) => {
+
+                const ModelOne = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({ a: Joi.any() });
+                    }
+                };
+
+                const keysOf = (schema) => Object.keys(schema.describe().children || {});
+
+                expect(keysOf(ModelOne.getJoiSchema())).to.only.include(['a']);
+                expect(keysOf(ModelOne.getJoiSchema(true))).to.only.include(['a']);
+
+                const ModelTwo = class extends ModelOne {
+                    static get joiSchema() {
+
+                        return super.joiSchema.keys({ b: Joi.any() });
+                    }
+                };
+
+                expect(keysOf(ModelTwo.getJoiSchema())).to.only.include(['a', 'b']);
+                expect(keysOf(ModelTwo.getJoiSchema(true))).to.only.include(['a', 'b']);
+
+                done();
+            });
         });
 
         describe('static getter jsonAttributes', () => {
