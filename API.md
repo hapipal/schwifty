@@ -5,7 +5,7 @@ Schwifty may be registered multiple times– it should be registered in any plug
 
 Schwifty takes the following registration options,
 
-  - `knex` - a knex instance or configuration.  This will determine the server-wide default knex instance; if a plugin does not declare its own knex instance using [`server.schwifty()`](#serverschwiftyconfig) then this one will be used.  It cannot be specified more than once for the root server.
+  - `knex` - a knex instance or [configuration](http://knexjs.org/#Installation-client).  This will determine the server-wide default knex instance; if a plugin does not declare its own knex instance using [`server.schwifty()`](#serverschwiftyconfig) then this one will be used.  It cannot be specified more than once for the root server.
   - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the root server.
   - `migrationsDir` - specifies a directory of knex migrations associated with the root server.  The directory path may be either absolute or relative to the current working directory.  It cannot be specified more than once for the root server.
   - `migrateOnStart` - a boolean, `'latest'`, or `'rollback'`, to determine how to handle [knex migrations](http://knexjs.org/#Migrations) at server initialization time.  Defaults to `false`, which indicates to not handle migrations at all.  When `true` or `'latest'`, runs all migrations that have not been run.  When `'rollback'`, rolls-back the latest group of migrations.
@@ -51,7 +51,7 @@ server.dependency('schwifty', someDbConnectedTask);
 ```
 
 #### Database connectivity
-Second, every knex instance declared during [plugin registration](#registration) or with [`server.schwifty()`](#serverschwiftyconfig) is identified and checked for connectivity.  If any instance of knex does not have database connectivity, you will receive an error and your server will not initialize.
+Second, every knex instance declared during [plugin registration](#registration) or with [`server.schwifty()`](#serverschwiftyconfig) is checked for connectivity.  If any instance of knex does not have database connectivity, you will receive an error and your server will not initialize.  While this does not make any guarantees about table existence or structure, it does guarantee database connectivity at server initialization time.
 
 #### Migrations
 Lastly, if you specified `migrateOnStart` as `true`, `'latest'`, or `'rollback'`, then migrations will be run against each knex instance.  Your instance of knex may specify its own [knex migration options](http://knexjs.org/#Migrations-API), except for `directory`, which will be ignored in favor of the migration directories declared using the `migrationsDir` option with [`server.schwifty()`](#serverschwiftyconfig).
@@ -70,7 +70,7 @@ An optional [`Joi.object()`](https://github.com/hapijs/joi/blob/master/API.md#ob
 This property is computed as a getter using the contents of `joiSchema`.  Any of the schema's keys that are [`Joi.object()`](https://github.com/hapijs/joi/blob/master/API.md#object)s or [`Joi.array()`](https://github.com/hapijs/joi/blob/master/API.md#array)s will be included in the list of JSON attributes.  If this property is set, it will forget about having been computed.  For more info, see objection's [`jsonAttributes`](http://vincit.github.io/objection.js/#jsonattributes).
 
 ### `getJoiSchema([patch])`
-Returns the [`joiSchema`](#joischema) and memoizes the result.  This is useful when `joiSchema` is set as a getter, but you'd like to avoid constantly recompiling the Joi when accessing it.  Past memoization is forgotten by extended classes.  When `patch` is `true`, the same schema is returned (and memoized separately), but set so that it ignores default values and missing required fields.
+Returns the [`joiSchema`](#joischema) and memoizes the result.  This is useful when `joiSchema` is defined as a getter, but you'd like to avoid constantly recompiling the schema when accessing it.  Past memoization is forgotten by extended classes.  When `patch` is `true`, the same schema is returned (and memoized separately), but set so that it ignores default values and missing required fields.
 
 ### `parseJoiValidationError(joiValidation)`
 Extracts the details of a Joi error for use as the contents of an objection [`ValidationError`](http://vincit.github.io/objection.js/#validationerror).
