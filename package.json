@@ -1,7 +1,7 @@
 {
   "name": "schwifty",
   "version": "1.0.0",
-  "description": "A hapi plugin integrating objection.js ORM",
+  "description": "A hapi plugin integrating Objection ORM",
   "main": "lib/index.js",
   "scripts": {
     "test": "lab -a code -t 100 -I '__core-js_shared__' -L",

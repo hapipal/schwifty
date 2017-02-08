@@ -1,6 +1,6 @@
 # schwifty
 
-A [hapi](https://github.com/hapijs/hapi) plugin integrating [Objection ORM](http://vincit.github.io/objection.js)
+A [hapi](https://github.com/hapijs/hapi) plugin integrating [Objection ORM](https://github.com/Vincit/objection.js)
 
 [![Build Status](https://travis-ci.org/BigRoomStudios/schwifty.svg?branch=master)](https://travis-ci.org/BigRoomStudios/schwifty) [![Coverage Status](https://coveralls.io/repos/github/BigRoomStudios/schwifty/badge.svg?branch=master)](https://coveralls.io/github/BigRoomStudios/schwifty?branch=master) [![Security Status](https://nodesecurity.io/orgs/schwifty/projects/43d64006-d2bd-41c7-a288-5ae051d0e3c2/badge)](https://nodesecurity.io/orgs/schwifty/projects/43d64006-d2bd-41c7-a288-5ae051d0e3c2)
 
@@ -112,7 +112,7 @@ server.register({
 ```
 
 ## Extras
- - [SOON] Compatible with [haute-couture](https://github.com/devinivy/haute-couture)
+ - Compatible with [haute-couture](https://github.com/devinivy/haute-couture)
  - [Objection docs](http://vincit.github.io/objection.js)
  - [Knex docs](http://knexjs.org/)
  - Based on [dogwater](https://github.com/devinivy/dogwater)
