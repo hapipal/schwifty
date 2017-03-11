@@ -21,6 +21,7 @@ const Schwifty = require('..');
 const lab = exports.lab = Lab.script();
 const expect = Code.expect;
 const describe = lab.describe;
+const before = lab.before;
 const it = lab.it;
 
 describe('Schwifty', () => {
@@ -84,21 +85,14 @@ describe('Schwifty', () => {
         return server.realm.plugins.schwifty;
     };
 
-    it('decorates the Knex instance onto the server.', (done) => {
+    before((done) => {
 
-        getServer(getOptions(), (err, server) => {
+        require('sqlite3'); // Just warm-up sqlite, so that the tests have consistent timing
 
-            expect(err).not.to.exist();
-
-            // Duck type the knex instance
-            expect(server.knex().queryBuilder).to.exist();
-            expect(server.knex().innerJoin).to.exist();
-            expect(server.knex().where).to.exist();
-            done();
-        });
+        done();
     });
 
-    it('connects models to knex instance during onPreStart.', (done) => {
+    it('connects models to knex instance during onPreStart, preserving class names.', (done) => {
 
         const config = getOptions({
             models: [
@@ -111,13 +105,18 @@ describe('Schwifty', () => {
 
             expect(err).to.not.exist();
             expect(server.models().Dog.$$knex).to.not.exist();
+            expect(server.models().Dog.name).to.equal('Dog');
             expect(server.models().Person.$$knex).to.not.exist();
+            expect(server.models().Person.name).to.equal('Person');
 
             server.initialize((err) => {
 
                 expect(err).to.not.exist();
                 expect(server.models().Dog.$$knex).to.exist();
+                expect(server.models().Dog.name).to.equal('Dog');
                 expect(server.models().Person.$$knex).to.exist();
+                expect(server.models().Person.name).to.equal('Person');
+
                 done();
             });
         });
