@@ -54,6 +54,11 @@ describe('Schwifty', () => {
         });
     };
 
+    const basicKnexConfig = {
+        client: 'sqlite3',
+        useNullAsDefault: true
+    };
+
     const getServer = (options, cb) => {
 
         const server = new Hapi.Server();
@@ -412,7 +417,7 @@ describe('Schwifty', () => {
 
         it('throws when multiple knex instances passed to same server.', (done) => {
 
-            getServer({ knex: Knex({}) }, (err, server) => {
+            getServer({ knex: Knex(basicKnexConfig) }, (err, server) => {
 
                 expect(err).to.not.exist();
 
@@ -420,7 +425,7 @@ describe('Schwifty', () => {
 
                     server.register({
                         register: Schwifty,
-                        options: { knex: Knex({}) }
+                        options: { knex: Knex(basicKnexConfig) }
                     }, (ignoreErr) => {
 
                         return done(new Error('Should not make it here.'));
@@ -576,7 +581,7 @@ describe('Schwifty', () => {
 
                 expect(err).to.not.exist();
 
-                const knex = Knex({});
+                const knex = Knex(basicKnexConfig);
 
                 const plugin = (srv, opts, next) => {
 
@@ -656,11 +661,11 @@ describe('Schwifty', () => {
 
                 const plugin = (srv, opts, next) => {
 
-                    srv.schwifty({ knex: Knex({}) });
+                    srv.schwifty({ knex: Knex(basicKnexConfig) });
 
                     expect(() => {
 
-                        srv.schwifty({ knex: Knex({}) });
+                        srv.schwifty({ knex: Knex(basicKnexConfig) });
                     }).to.throw('A knex instance/config may be specified only once per server or plugin.');
 
                     next();
