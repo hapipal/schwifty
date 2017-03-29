@@ -77,3 +77,7 @@ Extracts the details of a Joi error for use as the contents of an objection [`Va
 
 ### `model.$validate()`
 Validates the model instance using the its [`joiSchema`](#joischema), falling back to objection's base implementation of [`$validate()`](http://vincit.github.io/objection.js/#_s_validate).
+
+## Utilities
+### `Schwifty.assertCompatible(ModelA, ModelB, [message])`
+Ensures that `ModelA` and `ModelB` share the same class `name` and that one model extends the other, otherwise throws an error.  When `message` is provided, it will be used as the message for any thrown error.

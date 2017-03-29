@@ -817,7 +817,7 @@ describe('Schwifty', () => {
 
                 expect(err).to.not.exist();
 
-                expect(server.models().Person.knex()).to.equal(null);
+                expect(server.models().Person.knex()).to.not.exist();
 
                 server.initialize((err) => {
 
@@ -850,7 +850,7 @@ describe('Schwifty', () => {
 
                     expect(err).to.not.exist();
 
-                    expect(server.models(true).Person.knex()).to.equal(null);
+                    expect(server.models(true).Person.knex()).to.not.exist();
 
                     server.initialize((err) => {
 
@@ -885,7 +885,7 @@ describe('Schwifty', () => {
 
                     expect(err).to.not.exist();
 
-                    expect(server.models(true).Person.knex()).to.equal(null);
+                    expect(server.models(true).Person.knex()).to.not.exist();
 
                     server.initialize((err) => {
 
@@ -917,13 +917,13 @@ describe('Schwifty', () => {
 
                     expect(err).to.not.exist();
 
-                    expect(server.models(true).Person.knex()).to.equal(null);
+                    expect(server.models(true).Person.knex()).to.not.exist();
 
                     server.initialize((err) => {
 
                         expect(err).to.not.exist();
 
-                        expect(server.models(true).Person.knex()).to.equal(null);
+                        expect(server.models(true).Person.knex()).to.not.exist();
 
                         done();
                     });
@@ -2063,6 +2063,55 @@ describe('Schwifty', () => {
 
                 done();
             });
+        });
+    });
+
+    describe('assertCompatible()', () => {
+
+        const defaultErrorMsg = 'Models are incompatible.  One model must extend the other, and they must have the same name.';
+
+        it('throws if one model doesn\'t extend the other.', (done) => {
+
+            const ModelA = class Named extends Objection.Model {};
+            const ModelB = class Named extends Objection.Model {};
+
+            expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.throw(defaultErrorMsg);
+            expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.throw(defaultErrorMsg);
+
+            done();
+        });
+
+        it('throws if one model doesn\'t have the same name as the other.', (done) => {
+
+            const ModelA = class NameOne extends Objection.Model {};
+            const ModelB = class NameTwo extends ModelA {};
+
+            expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.throw(defaultErrorMsg);
+            expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.throw(defaultErrorMsg);
+
+            done();
+        });
+
+        it('throws with custom message.', (done) => {
+
+            const ModelA = class NameOne extends Objection.Model {};
+            const ModelB = class NameTwo extends ModelA {};
+            const customMessage = 'Bad, very bad!';
+
+            expect(() => Schwifty.assertCompatible(ModelA, ModelB, customMessage)).to.throw(customMessage);
+
+            done();
+        });
+
+        it('no-ops when one model extends the other and they share the same name.', (done) => {
+
+            const ModelA = class NameOne extends Objection.Model {};
+            const ModelB = class NameOne extends ModelA {};
+
+            expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.not.throw();
+            expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.not.throw();
+
+            done();
         });
     });
 });
