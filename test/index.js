@@ -2068,7 +2068,7 @@ describe('Schwifty', () => {
 
     describe('assertCompatible()', () => {
 
-        const defaultErrorMsg = 'Models are incompatible.  One model must extend the other, and they must have the same name.';
+        const defaultErrorMsg = 'Models are incompatible.  One model must extend the other, they must have the same name, and share the same tableName.';
 
         it('throws if one model doesn\'t extend the other.', (done) => {
 
@@ -2092,6 +2092,20 @@ describe('Schwifty', () => {
             done();
         });
 
+        it('throws if one model doesn\'t have the same table as the other.', (done) => {
+
+            const ModelA = class Named extends Objection.Model {};
+            ModelA.tableName = 'x';
+
+            const ModelB = class Named extends ModelA {};
+            ModelB.tableName = 'y';
+
+            expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.throw(defaultErrorMsg);
+            expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.throw(defaultErrorMsg);
+
+            done();
+        });
+
         it('throws with custom message.', (done) => {
 
             const ModelA = class NameOne extends Objection.Model {};
@@ -2103,10 +2117,13 @@ describe('Schwifty', () => {
             done();
         });
 
-        it('no-ops when one model extends the other and they share the same name.', (done) => {
+        it('no-ops when one model extends the other, they share the same name, and share the same table.', (done) => {
 
-            const ModelA = class NameOne extends Objection.Model {};
-            const ModelB = class NameOne extends ModelA {};
+            const ModelA = class Named extends Objection.Model {};
+            ModelA.tableName = 'x';
+
+            const ModelB = class Named extends ModelA {};
+            ModelB.tableName = 'x';
 
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.not.throw();
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.not.throw();
