@@ -80,4 +80,4 @@ Validates the model instance using the its [`joiSchema`](#joischema), falling ba
 
 ## Utilities
 ### `Schwifty.assertCompatible(ModelA, ModelB, [message])`
-Ensures that `ModelA` and `ModelB` share the same class `name` and that one model extends the other, otherwise throws an error.  When `message` is provided, it will be used as the message for any thrown error.
+Ensures that `ModelA` and `ModelB` have the same class `name`, share the same `tableName`, and that one model extends the other, otherwise throws an error.  When `message` is provided, it will be used as the message for any thrown error.
