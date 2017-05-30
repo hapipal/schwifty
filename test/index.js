@@ -1881,6 +1881,41 @@ describe('Schwifty', () => {
                 done();
             });
 
+            it('can modify validation schema using model.$beforeValidate().', (done) => {
+
+                let seenSchema;
+                let seenJson;
+                let seenOptions;
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object();
+                    }
+
+                    $beforeValidate(schema, json, options) {
+
+                        seenSchema = schema;
+                        seenJson = json;
+                        seenOptions = options;
+
+                        return schema.keys({
+                            persnicketyField: Joi.string().max(1)
+                        });
+                    }
+                };
+
+                const instance = new Model();
+                const persnickety = { persnicketyField: 'xxxxx' }; // Length of 5, bigger than max
+
+                expect(() => instance.$validate(persnickety)).to.throw(Objection.ValidationError);
+                expect(seenSchema).to.shallow.equal(Model.getJoiSchema());
+                expect(seenJson).to.equal(persnickety);
+                expect(seenOptions).to.equal({});
+
+                done();
+            });
+
             it('skips validation if model is missing joiSchema.', (done) => {
 
                 const anythingGoes = new Schwifty.Model();
