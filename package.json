@@ -25,13 +25,13 @@
     "hoek": "4.x.x",
     "items": "2.x.x",
     "joi": "10.x.x",
-    "tmp": "0.0.31",
+    "tmp": "0.0.32",
     "toys": "1.x.x"
   },
   "peerDependencies": {
     "hapi": ">=10 <17",
     "knex": ">=0.8",
-    "objection": ">=0.7 <0.9"
+    "objection": ">=0.7.6 <0.9"
   },
   "devDependencies": {
     "code": "4.x.x",
