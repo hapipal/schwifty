@@ -92,7 +92,7 @@ describe('Schwifty', () => {
         done();
     });
 
-    it('connects models to knex instance during onPreStart, preserving class names.', (done) => {
+    it('connects models to knex instance during onPreStart.', (done) => {
 
         const config = getOptions({
             models: [
@@ -105,17 +105,13 @@ describe('Schwifty', () => {
 
             expect(err).to.not.exist();
             expect(server.models().Dog.$$knex).to.not.exist();
-            expect(server.models().Dog.name).to.equal('Dog');
             expect(server.models().Person.$$knex).to.not.exist();
-            expect(server.models().Person.name).to.equal('Person');
 
             server.initialize((err) => {
 
                 expect(err).to.not.exist();
                 expect(server.models().Dog.$$knex).to.exist();
-                expect(server.models().Dog.name).to.equal('Dog');
                 expect(server.models().Person.$$knex).to.exist();
-                expect(server.models().Person.name).to.equal('Person');
 
                 done();
             });
