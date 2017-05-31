@@ -331,6 +331,28 @@ describe('Schwifty', () => {
             });
         });
 
+        it('takes `models` option respecting server.path().', (done) => {
+
+            const server = new Hapi.Server();
+            server.connection();
+            server.path(__dirname);
+
+            server.register({
+                register: Schwifty,
+                options: getOptions({ models: modelsFile })
+            }, (err) => {
+
+                expect(err).to.not.exist();
+
+                const models = server.models();
+
+                expect(models.Dog).to.exist();
+                expect(models.Person).to.exist();
+
+                done();
+            });
+        });
+
         it('takes `models` option as an array of objects.', (done) => {
 
             const options = getOptions({
@@ -1280,6 +1302,38 @@ describe('Schwifty', () => {
                         expect(version).to.equal('basic.js');
 
                         done();
+                    });
+                });
+            });
+        });
+
+        it('respects server.path() when setting `migrationsDir`.', (done) => {
+
+            getServer(getOptions({
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.path(`${__dirname}/migrations`);
+                server.schwifty({ migrationsDir: 'basic' });
+
+                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                    expect(err).to.not.exist();
+                    expect(versionPre).to.equal('none');
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                            expect(err).to.not.exist();
+                            expect(versionPost).to.equal('basic.js');
+
+                            done();
+                        });
                     });
                 });
             });
