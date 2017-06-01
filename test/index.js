@@ -1825,6 +1825,97 @@ describe('Schwifty', () => {
                 done();
             });
 
+            it('throws Objection.ValidationError with multiple errors per key.', (done) => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            persnicketyField: Joi.string().max(1).min(10)
+                        })
+                        .options({
+                            abortEarly: false
+                        });
+                    }
+                };
+
+                const instance = new Model();
+                const persnickety = { persnicketyField: 'xxxxx' }; // Length of 5, bigger than max and less than min
+
+                let error;
+
+                try {
+                    instance.$validate(persnickety);
+                }
+                catch (e) {
+                    error = e;
+                }
+
+                expect(error).to.be.an.instanceof(Objection.ValidationError);
+
+                expect(error.data).to.equal({
+                    persnicketyField: [
+                        {
+                            message: '"persnicketyField" length must be less than or equal to 1 characters long',
+                            keyword: 'string.max',
+                            params: {
+                                limit: 1,
+                                value: 'xxxxx',
+                                encoding: undefined,
+                                key: 'persnicketyField'
+                            }
+                        },
+                        {
+                            message: '"persnicketyField" length must be at least 10 characters long',
+                            keyword: 'string.min',
+                            params: {
+                                limit: 10,
+                                value: 'xxxxx',
+                                encoding: undefined,
+                                key: 'persnicketyField'
+                            }
+                        }
+                    ]
+                });
+
+                done();
+            });
+
+            it('can modify validation schema using model.$beforeValidate().', (done) => {
+
+                let seenSchema;
+                let seenJson;
+                let seenOptions;
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object();
+                    }
+
+                    $beforeValidate(schema, json, options) {
+
+                        seenSchema = schema;
+                        seenJson = json;
+                        seenOptions = options;
+
+                        return schema.keys({
+                            persnicketyField: Joi.string().max(1)
+                        });
+                    }
+                };
+
+                const instance = new Model();
+                const persnickety = { persnicketyField: 'xxxxx' }; // Length of 5, bigger than max
+
+                expect(() => instance.$validate(persnickety)).to.throw(Objection.ValidationError);
+                expect(seenSchema).to.shallow.equal(Model.getJoiSchema());
+                expect(seenJson).to.equal(persnickety);
+                expect(seenOptions).to.equal({});
+
+                done();
+            });
+
             it('skips validation if model is missing joiSchema.', (done) => {
 
                 const anythingGoes = new Schwifty.Model();
@@ -2040,7 +2131,7 @@ describe('Schwifty', () => {
         describe('static setter jsonAttributes', () => {
 
             // A quick dip into unit (vs behavioral) testing!
-            it('sets _jsonAttributesMemo', (done) => {
+            it('sets $$schwiftyJsonAttributes', (done) => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -2056,10 +2147,10 @@ describe('Schwifty', () => {
 
                 const jsonAttrs = Model.jsonAttributes;
                 expect(jsonAttrs).to.equal(['arr', 'obj']);
-                expect(jsonAttrs).to.shallow.equal(Model._jsonAttributesMemo);
+                expect(jsonAttrs).to.shallow.equal(Model.$$schwiftyJsonAttributes);
 
                 const emptyJsonAttrs = Model.jsonAttributes = [];
-                expect(emptyJsonAttrs).to.shallow.equal(Model._jsonAttributesMemo);
+                expect(emptyJsonAttrs).to.shallow.equal(Model.$$schwiftyJsonAttributes);
 
                 done();
             });
