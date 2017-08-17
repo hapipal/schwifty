@@ -92,7 +92,7 @@ describe('Schwifty', () => {
         done();
     });
 
-    it('connects models to knex instance during onPreStart, preserving class names.', (done) => {
+    it('connects models to knex instance during onPreStart.', (done) => {
 
         const config = getOptions({
             models: [
@@ -105,17 +105,13 @@ describe('Schwifty', () => {
 
             expect(err).to.not.exist();
             expect(server.models().Dog.$$knex).to.not.exist();
-            expect(server.models().Dog.name).to.equal('Dog');
             expect(server.models().Person.$$knex).to.not.exist();
-            expect(server.models().Person.name).to.equal('Person');
 
             server.initialize((err) => {
 
                 expect(err).to.not.exist();
                 expect(server.models().Dog.$$knex).to.exist();
-                expect(server.models().Dog.name).to.equal('Dog');
                 expect(server.models().Person.$$knex).to.exist();
-                expect(server.models().Person.name).to.equal('Person');
 
                 done();
             });
@@ -324,6 +320,28 @@ describe('Schwifty', () => {
                 expect(err).to.not.exist();
 
                 const models = server.models();
+                expect(models.Dog).to.exist();
+                expect(models.Person).to.exist();
+
+                done();
+            });
+        });
+
+        it('takes `models` option respecting server.path().', (done) => {
+
+            const server = new Hapi.Server();
+            server.connection();
+            server.path(__dirname);
+
+            server.register({
+                register: Schwifty,
+                options: getOptions({ models: modelsFile })
+            }, (err) => {
+
+                expect(err).to.not.exist();
+
+                const models = server.models();
+
                 expect(models.Dog).to.exist();
                 expect(models.Person).to.exist();
 
@@ -1285,6 +1303,38 @@ describe('Schwifty', () => {
             });
         });
 
+        it('respects server.path() when setting `migrationsDir`.', (done) => {
+
+            getServer(getOptions({
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.path(`${__dirname}/migrations`);
+                server.schwifty({ migrationsDir: 'basic' });
+
+                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+
+                    expect(err).to.not.exist();
+                    expect(versionPre).to.equal('none');
+
+                    server.initialize((err) => {
+
+                        expect(err).to.not.exist();
+
+                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
+
+                            expect(err).to.not.exist();
+                            expect(versionPost).to.equal('basic.js');
+
+                            done();
+                        });
+                    });
+                });
+            });
+        });
+
         it('coalesces migrations in different directories across plugins sharing knex instances.', (done) => {
 
             const makePlugin = (id, knex, migrationsDir) => {
@@ -1825,6 +1875,97 @@ describe('Schwifty', () => {
                 done();
             });
 
+            it('throws Objection.ValidationError with multiple errors per key.', (done) => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            persnicketyField: Joi.string().max(1).min(10)
+                        })
+                        .options({
+                            abortEarly: false
+                        });
+                    }
+                };
+
+                const instance = new Model();
+                const persnickety = { persnicketyField: 'xxxxx' }; // Length of 5, bigger than max and less than min
+
+                let error;
+
+                try {
+                    instance.$validate(persnickety);
+                }
+                catch (e) {
+                    error = e;
+                }
+
+                expect(error).to.be.an.instanceof(Objection.ValidationError);
+
+                expect(error.data).to.equal({
+                    persnicketyField: [
+                        {
+                            message: '"persnicketyField" length must be less than or equal to 1 characters long',
+                            keyword: 'string.max',
+                            params: {
+                                limit: 1,
+                                value: 'xxxxx',
+                                encoding: undefined,
+                                key: 'persnicketyField'
+                            }
+                        },
+                        {
+                            message: '"persnicketyField" length must be at least 10 characters long',
+                            keyword: 'string.min',
+                            params: {
+                                limit: 10,
+                                value: 'xxxxx',
+                                encoding: undefined,
+                                key: 'persnicketyField'
+                            }
+                        }
+                    ]
+                });
+
+                done();
+            });
+
+            it('can modify validation schema using model.$beforeValidate().', (done) => {
+
+                let seenSchema;
+                let seenJson;
+                let seenOptions;
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object();
+                    }
+
+                    $beforeValidate(schema, json, options) {
+
+                        seenSchema = schema;
+                        seenJson = json;
+                        seenOptions = options;
+
+                        return schema.keys({
+                            persnicketyField: Joi.string().max(1)
+                        });
+                    }
+                };
+
+                const instance = new Model();
+                const persnickety = { persnicketyField: 'xxxxx' }; // Length of 5, bigger than max
+
+                expect(() => instance.$validate(persnickety)).to.throw(Objection.ValidationError);
+                expect(seenSchema).to.shallow.equal(Model.getJoiSchema());
+                expect(seenJson).to.equal(persnickety);
+                expect(seenOptions).to.equal({});
+
+                done();
+            });
+
             it('skips validation if model is missing joiSchema.', (done) => {
 
                 const anythingGoes = new Schwifty.Model();
@@ -2040,7 +2181,7 @@ describe('Schwifty', () => {
         describe('static setter jsonAttributes', () => {
 
             // A quick dip into unit (vs behavioral) testing!
-            it('sets _jsonAttributesMemo', (done) => {
+            it('sets $$schwiftyJsonAttributes', (done) => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -2056,10 +2197,10 @@ describe('Schwifty', () => {
 
                 const jsonAttrs = Model.jsonAttributes;
                 expect(jsonAttrs).to.equal(['arr', 'obj']);
-                expect(jsonAttrs).to.shallow.equal(Model._jsonAttributesMemo);
+                expect(jsonAttrs).to.shallow.equal(Model.$$schwiftyJsonAttributes);
 
                 const emptyJsonAttrs = Model.jsonAttributes = [];
-                expect(emptyJsonAttrs).to.shallow.equal(Model._jsonAttributesMemo);
+                expect(emptyJsonAttrs).to.shallow.equal(Model.$$schwiftyJsonAttributes);
 
                 done();
             });
@@ -2068,7 +2209,7 @@ describe('Schwifty', () => {
 
     describe('assertCompatible()', () => {
 
-        const defaultErrorMsg = 'Models are incompatible.  One model must extend the other, and they must have the same name.';
+        const defaultErrorMsg = 'Models are incompatible.  One model must extend the other, they must have the same name, and share the same tableName.';
 
         it('throws if one model doesn\'t extend the other.', (done) => {
 
@@ -2092,6 +2233,20 @@ describe('Schwifty', () => {
             done();
         });
 
+        it('throws if one model doesn\'t have the same table as the other.', (done) => {
+
+            const ModelA = class Named extends Objection.Model {};
+            ModelA.tableName = 'x';
+
+            const ModelB = class Named extends ModelA {};
+            ModelB.tableName = 'y';
+
+            expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.throw(defaultErrorMsg);
+            expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.throw(defaultErrorMsg);
+
+            done();
+        });
+
         it('throws with custom message.', (done) => {
 
             const ModelA = class NameOne extends Objection.Model {};
@@ -2103,10 +2258,13 @@ describe('Schwifty', () => {
             done();
         });
 
-        it('no-ops when one model extends the other and they share the same name.', (done) => {
+        it('no-ops when one model extends the other, they share the same name, and share the same table.', (done) => {
 
-            const ModelA = class NameOne extends Objection.Model {};
-            const ModelB = class NameOne extends ModelA {};
+            const ModelA = class Named extends Objection.Model {};
+            ModelA.tableName = 'x';
+
+            const ModelB = class Named extends ModelA {};
+            ModelB.tableName = 'x';
 
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.not.throw();
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.not.throw();

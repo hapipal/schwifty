@@ -6,8 +6,8 @@ Schwifty may be registered multiple times– it should be registered in any plug
 Schwifty takes the following registration options,
 
   - `knex` - a knex instance or [configuration](http://knexjs.org/#Installation-client).  This will determine the server-wide default knex instance; if a plugin does not declare its own knex instance using [`server.schwifty()`](#serverschwiftyconfig) then this one will be used.  It cannot be specified more than once for the root server.
-  - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the root server.
-  - `migrationsDir` - specifies a directory of knex migrations associated with the root server.  The directory path may be either absolute or relative to the current working directory.  It cannot be specified more than once for the root server.
+  - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the root server.  May also be a path to a module that exports such an array– either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#serverpathrelativeto) when set, or otherwise relative to the current working directory.
+  - `migrationsDir` - specifies a directory of knex migrations associated with the root server.  The directory path may be either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#serverpathrelativeto) when set, or otherwise relative to the current working directory.  It cannot be specified more than once for the root server.
   - `migrateOnStart` - a boolean, `'latest'`, or `'rollback'`, to determine how to handle [knex migrations](http://knexjs.org/#Migrations) at server initialization time.  Defaults to `false`, which indicates to not handle migrations at all.  When `true` or `'latest'`, runs all migrations that have not been run.  When `'rollback'`, rolls-back the latest group of migrations.
   - `teardownOnStop` - a boolean indicating whether or not all knex connections should be torn-down when the hapi server stops (after server connections are drained).  Defaults to `true`, and may only be specified once.
 
@@ -26,7 +26,7 @@ Used to register models, knex instances, and migration directory information on 
   - An object specifying,
     - `knex` - a knex instance or configuration.  This will determine the knex instance that should be used within the current plugin.  If it's specified on the root server, it will set the server-wide default knex instance.  It cannot be specified more than once within a plugin or on the root server, but the same knex instance may be shared by multiple plugins.
     - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the current plugin or root server.
-    - `migrationsDir` - specifies a directory of knex migrations associated with the current plugin or root server.  The directory path may be either absolute or relative to the current working directory.  It cannot be specified more than once within a plugin or on the root server.
+    - `migrationsDir` - specifies a directory of knex migrations associated with the current plugin or root server.  The directory path may be either absolute, relative to the plugin's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#serverpathrelativeto) when set, or otherwise relative to the current working directory.  It cannot be specified more than once within a plugin or on the root server.
 
 
 ### Request decorations
@@ -72,12 +72,9 @@ This property is computed as a getter using the contents of `joiSchema`.  Any of
 ### `getJoiSchema([patch])`
 Returns the [`joiSchema`](#joischema) and memoizes the result.  This is useful when `joiSchema` is defined as a getter, but you'd like to avoid constantly recompiling the schema when accessing it.  Past memoization is forgotten by extended classes.  When `patch` is `true`, the same schema is returned (and memoized separately), but set so that it ignores default values and missing required fields.
 
-### `parseJoiValidationError(joiValidation)`
-Extracts the details of a Joi error for use as the contents of an objection [`ValidationError`](http://vincit.github.io/objection.js/#validationerror).
-
 ### `model.$validate()`
-Validates the model instance using the its [`joiSchema`](#joischema), falling back to objection's base implementation of [`$validate()`](http://vincit.github.io/objection.js/#_s_validate).
+Validates the model instance using its [`joiSchema`](#joischema).  This is implemented using objection's [`Validator`](http://vincit.github.io/objection.js/#validator) interface.
 
 ## Utilities
 ### `Schwifty.assertCompatible(ModelA, ModelB, [message])`
-Ensures that `ModelA` and `ModelB` share the same class `name` and that one model extends the other, otherwise throws an error.  When `message` is provided, it will be used as the message for any thrown error.
+Ensures that `ModelA` and `ModelB` have the same class `name`, share the same `tableName`, and that one model extends the other, otherwise throws an error.  When `message` is provided, it will be used as the message for any thrown error.
