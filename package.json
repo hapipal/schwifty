@@ -23,8 +23,11 @@
   ],
   "dependencies": {
     "hoek": "4.x.x",
+    "install": "^0.10.1",
     "items": "2.x.x",
     "joi": "10.x.x",
+    "npm": "^5.3.0",
+    "schwifty-migration": "git+https://github.com/BigRoomStudios/schwifty-migration.git",
     "tmp": "0.0.31",
     "toys": "1.x.x"
   },

@@ -104,11 +104,13 @@ describe('Schwifty', () => {
         getServer(config, (err, server) => {
 
             expect(err).to.not.exist();
+
             expect(server.models().Dog.$$knex).to.not.exist();
             expect(server.models().Person.$$knex).to.not.exist();
 
             server.initialize((err) => {
 
+                console.log(server.models());
                 expect(err).to.not.exist();
                 expect(server.models().Dog.$$knex).to.exist();
                 expect(server.models().Person.$$knex).to.exist();
