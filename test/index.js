@@ -15,6 +15,7 @@ const Knex = require('knex');
 const TestModels = require('./models');
 const Schwifty = require('..');
 
+const internals = {};
 
 // Test shortcuts
 
@@ -23,6 +24,23 @@ const expect = Code.expect;
 const describe = lab.describe;
 const before = lab.before;
 const it = lab.it;
+
+// Mutate console.log to keep SchwiftyMigration from printing to the console
+
+console._log = console.log;
+
+let logOutput = [];
+
+console.log = (...args) => {
+
+    logOutput.push(...args);
+};
+
+lab.afterEach((done) => {
+
+    logOutput = [];
+    done();
+});
 
 describe('Schwifty', () => {
 
@@ -405,7 +423,6 @@ describe('Schwifty', () => {
 
                     server.register(plugin, () => done('Should not make it here.'));
                 }).to.throw('Schwifty\'s teardownOnStop option can only be specified once.');
-                // }).to.throw(/Schwifty\'s teardownOnStop option can only be specified once./);
 
                 done();
             });
@@ -1488,6 +1505,50 @@ describe('Schwifty', () => {
 
                         done();
                     });
+                });
+            });
+        });
+    });
+
+    describe('schwifty-migration integration', () => {
+
+        it('generates a migration file but does not run the migration.', (done) => {
+
+            // spawn child process here
+
+            getServer(getOptions({
+                migrationsDir: './test/migrations/schwifty-migration',
+                migrationsMode: 'alter',
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ],
+                migrateOnStart: true
+            }), (err, server) => {
+
+                expect(err).to.not.exist();
+
+                server.knex().migrate.currentVersion().asCallback((err, version) => {
+
+                    expect(err).to.not.exist();
+
+                    // TODO finish this test
+
+                    // If the migration had run, the current version would be `empty-migration.js`
+
+                    // `none` is what knex gives you when the  `knex_migrations` table is empty
+
+                    expect(version).to.equal('none');
+
+                    expect(() => {
+
+                        server.initialize((_) => {
+
+                            return done(new Error('Should not make it here.'));
+                        });
+                    }).to.throw('Success');
+
+                    done();
                 });
             });
         });
