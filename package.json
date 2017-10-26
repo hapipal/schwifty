@@ -1,48 +1,48 @@
 {
-  "name": "schwifty",
-  "version": "2.0.0",
-  "description": "A hapi plugin integrating Objection ORM",
-  "main": "lib/index.js",
-  "scripts": {
-    "test": "lab -a code -t 100 -I '__core-js_shared__' -L",
-    "coveralls": "lab -r lcov | coveralls"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/BigRoomStudios/schwifty.git"
-  },
-  "engines": {
-    "node": ">=4.0.0"
-  },
-  "keywords": [
-    "hapi",
-    "plugin",
-    "objection",
-    "database",
-    "orm"
-  ],
-  "dependencies": {
-    "hoek": "4.x.x",
-    "items": "2.x.x",
-    "joi": "10.x.x",
-    "schwifty-migration": "github:BigroomStudios/schwifty-migration",
-    "tmp": "0.0.31",
-    "toys": "1.x.x"
-  },
-  "peerDependencies": {
-    "hapi": ">=10 <17",
-    "knex": ">=0.8",
-    "objection": ">=0.7 <0.9"
-  },
-  "devDependencies": {
-    "code": "4.x.x",
-    "coveralls": "2.x.x",
-    "hapi": "16.x.x",
-    "knex": "0.12.x",
-    "lab": "13.x.x",
-    "objection": "0.8.x",
-    "sqlite3": "3.x.x"
-  },
-  "author": "William Woodruff <bill@bigroomstudios.com>",
-  "license": "MIT"
+    "name": "schwifty",
+    "version": "2.0.0",
+    "description": "A hapi plugin integrating Objection ORM",
+    "main": "lib/index.js",
+    "scripts": {
+        "test": "lab -a code -t 100 -I '__core-js_shared__' -L",
+        "coveralls": "lab -r lcov | coveralls"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/BigRoomStudios/schwifty.git"
+    },
+    "engines": {
+        "node": ">=4.0.0"
+    },
+    "keywords": [
+        "hapi",
+        "plugin",
+        "objection",
+        "database",
+        "orm"
+    ],
+    "dependencies": {
+        "hoek": "4.x.x",
+        "items": "2.x.x",
+        "joi": "10.x.x",
+        "schwifty-migration": "github:BigroomStudios/schwifty-migration",
+        "tmp": "0.0.31",
+        "toys": "1.x.x"
+    },
+    "peerDependencies": {
+        "hapi": ">=10 <17",
+        "knex": ">=0.8",
+        "objection": ">=0.7 <0.9"
+    },
+    "devDependencies": {
+        "code": "4.x.x",
+        "coveralls": "2.x.x",
+        "hapi": "16.x.x",
+        "knex": "0.12.x",
+        "lab": "13.x.x",
+        "objection": "0.8.x",
+        "sqlite3": "3.x.x"
+    },
+    "author": "William Woodruff <bill@bigroomstudios.com>",
+    "license": "MIT"
 }
