@@ -1,4 +1,4 @@
 node_modules/*
 .tmp/
 npm-debug*
-test/migrations/schwifty-migration/*schwifty-migration
+test/migrations/schwifty-migration/*schwifty-migration.js
