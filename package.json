@@ -29,14 +29,14 @@
     "toys": "1.x.x"
   },
   "peerDependencies": {
-    "hapi": ">=10 <17",
+    "hapi": ">=10 <=17",
     "knex": ">=0.8",
     "objection": ">=0.7 <0.9"
   },
   "devDependencies": {
     "code": "4.x.x",
     "coveralls": "2.x.x",
-    "hapi": "16.x.x",
+    "hapi": "github:hapijs/hapi#v17.0.0-rc9",
     "knex": "0.12.x",
     "lab": "13.x.x",
     "objection": "0.8.x",
