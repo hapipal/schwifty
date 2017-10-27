@@ -71,7 +71,6 @@ describe('Schwifty', () => {
                 options
             });
 
-            return server;
         } catch (err) {
 
             console.log("Initial registration failed", err);
@@ -85,7 +84,7 @@ describe('Schwifty', () => {
         try {
 
             await server.initialize();
-            return server;
+
         } catch (error) {
 
             console.log("Initialization error", error);
@@ -107,7 +106,7 @@ describe('Schwifty', () => {
         done();
     });
 
-    it('connects models to knex instance during onPreStart.', (done) => {
+    it.only('connects models to knex instance during onPreStart.', async () => {
 
         const config = getOptions({
             models: [
@@ -116,56 +115,45 @@ describe('Schwifty', () => {
             ]
         });
 
-        getServer(config).then(function (server) {
+        const server = await getServer(config);
 
-            expect(server.models().Dog.$$knex).to.not.exist();
-            expect(server.models().Person.$$knex).to.not.exist();
+        expect(server.models().Dog.$$knex).to.not.exist();
+        expect(server.models().Person.$$knex).to.not.exist();
 
-            return server;
+        await initializeServer();
 
-        }).then(initializeServer).then(function(server) {
+        expect(server.models().Dog.$$knex).to.exist();
+        expect(server.models().Person.$$knex).to.exist();
 
-              expect(server.models().Dog.$$knex).to.exist();
-              expect(server.models().Person.$$knex).to.exist();
-
-              done();
-
-        }).catch((error) => {
-
-            console.log("First test error", error);
-            done(error);
-
-        });
     });
 
-    /*it('tears-down connections onPostStop.', (done) => {
+    it('tears-down connections onPostStop.', (done) => {
 
-        getServer(getOptions(), (err, server) => {
-
+        getServer(getOptions()).then((server) => {
             let toredown = 0;
-            expect(err).to.not.exist();
+            return server;
+        }).then(initializeServer)
+          .then(function(server) {
 
-            server.initialize((err) => {
+              expect(toredown).to.equal(0);
+              const oldDestroy = server.knex().destroy;
+              // anything to change in the knex server decoration?
+              server.knex().destroy = (cb) => {
 
-                expect(err).to.not.exist();
-                expect(toredown).to.equal(0);
+                  ++toredown;
+                  // worried about this?
+                  return oldDestroy(cb);
+              };
+              // need to stop the server
+          }).then(stopServer).then(() => {
 
-                const oldDestroy = server.knex().destroy;
-                server.knex().destroy = (cb) => {
+              expect(toredown).to.equal(1);
+              done();
+          }).catch((error) => {
 
-                    ++toredown;
-                    return oldDestroy(cb);
-                };
+          });
 
-                server.stop((err) => {
-
-                    expect(err).to.not.exist();
-                    expect(toredown).to.equal(1);
-                    done();
-                });
-            });
-        });
-    });
+    })
 
     it('tears-down all connections onPostStop.', (done) => {
 
@@ -2290,5 +2278,5 @@ describe('Schwifty', () => {
 
             done();
         });
-    });*/
+    });
 });
