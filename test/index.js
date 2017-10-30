@@ -15,7 +15,6 @@ const Knex = require('knex');
 const TestModels = require('./models');
 const Schwifty = require('..');
 
-
 // Test shortcuts
 
 const lab = exports.lab = Lab.script();
@@ -60,9 +59,9 @@ describe('Schwifty', () => {
         useNullAsDefault: true
     };
 
-    async function getServer (options) {
+    async function getServer (options){
 
-        const server = new Hapi.Server();
+        const server = Hapi.server();
 
         try {
 
@@ -71,23 +70,27 @@ describe('Schwifty', () => {
                 options
             });
 
-        } catch (err) {
+            return server;
 
-            console.log("Initial registration failed", err);
+        }
+        catch (err) {
+
+            console.log('Registration error', err);
             throw err;
         }
 
     }
 
-    async function initializeServer (server) {
+    async function initializeServer (server){
 
         try {
 
             await server.initialize();
 
-        } catch (error) {
+        }
+        catch (error) {
 
-            console.log("Initialization error", error);
+            console.log('Initialization error', error);
             throw error;
         }
     }
@@ -99,11 +102,10 @@ describe('Schwifty', () => {
         return server.realm.plugins.schwifty;
     };
 
-    before((done) => {
+    before(() => {
 
         require('sqlite3'); // Just warm-up sqlite, so that the tests have consistent timing
 
-        done();
     });
 
     it.only('connects models to knex instance during onPreStart.', async () => {
@@ -120,40 +122,29 @@ describe('Schwifty', () => {
         expect(server.models().Dog.$$knex).to.not.exist();
         expect(server.models().Person.$$knex).to.not.exist();
 
-        await initializeServer();
+        await initializeServer(server);
 
         expect(server.models().Dog.$$knex).to.exist();
         expect(server.models().Person.$$knex).to.exist();
 
     });
 
-    it('tears-down connections onPostStop.', (done) => {
+    it('tears-down connections onPostStop.', async () => {
 
-        getServer(getOptions()).then((server) => {
-            let toredown = 0;
-            return server;
-        }).then(initializeServer)
-          .then(function(server) {
+        const server = await getServer(getOptions());
+        let toredown = 0;
 
-              expect(toredown).to.equal(0);
-              const oldDestroy = server.knex().destroy;
-              // anything to change in the knex server decoration?
-              server.knex().destroy = (cb) => {
+        expect(toredown).to.equal(0);
 
-                  ++toredown;
-                  // worried about this?
-                  return oldDestroy(cb);
-              };
-              // need to stop the server
-          }).then(stopServer).then(() => {
+        await server.knex().destroy();
+        ++toredown;
 
-              expect(toredown).to.equal(1);
-              done();
-          }).catch((error) => {
+        await server.stop();
 
-          });
+        expect(toredown).to.equal(1);
 
-    })
+    });
+
 
     it('tears-down all connections onPostStop.', (done) => {
 

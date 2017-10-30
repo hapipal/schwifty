@@ -23,7 +23,6 @@
   ],
   "dependencies": {
     "hoek": "4.x.x",
-    "items": "2.x.x",
     "joi": "10.x.x",
     "tmp": "0.0.31",
     "toys": "1.x.x"
@@ -38,7 +37,7 @@
     "coveralls": "2.x.x",
     "hapi": "github:hapijs/hapi#v17.0.0-rc9",
     "knex": "0.12.x",
-    "lab": "13.x.x",
+    "lab": "15.x.x",
     "objection": "0.8.x",
     "sqlite3": "3.x.x"
   },
