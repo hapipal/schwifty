@@ -1257,12 +1257,12 @@ describe('Schwifty', () => {
             await server.initialize();
 
             const migrations1 = await knex1('TestMigrations').columns('name').orderBy('name', 'asc');
-            //const migrations2 = await knex2('TestMigrations').columns('name').orderBy('name', 'asc');
+            const migrations2 = await knex2('TestMigrations').columns('name').orderBy('name', 'asc');
 
             const getName = (x) => x.name;
 
             expect(migrations1.map(getName)).to.equal(['basic.js', 'extras-one-1st.js', 'extras-one-2nd.js']);
-            //expect(migrations2.map(getName)).to.equal(['basic.js', 'extras-two-1st.js', 'extras-two-2nd.js']);
+            expect(migrations2.map(getName)).to.equal(['basic.js', 'extras-two-1st.js', 'extras-two-2nd.js']);
 
         });
 
