@@ -59,41 +59,18 @@ describe('Schwifty', () => {
         useNullAsDefault: true
     };
 
-    async function getServer (options){
+    const getServer = async (options) => {
 
         const server = Hapi.server();
 
-        try {
+        await server.register({
+            plugin: Schwifty,
+            options
+        });
 
-            await server.register({
-                plugin: Schwifty,
-                options
-            });
+        return server;
 
-            return server;
-
-        }
-        catch (err) {
-
-            console.log('Registration error', err);
-            throw err;
-        }
-
-    }
-
-    async function initializeServer (server){
-
-        try {
-
-            await server.initialize();
-
-        }
-        catch (error) {
-
-            console.log('Initialization error', error);
-            throw error;
-        }
-    }
+    };
 
     const modelsFile = './models/as-file.js';
 
@@ -108,7 +85,7 @@ describe('Schwifty', () => {
 
     });
 
-    it.only('connects models to knex instance during onPreStart.', async () => {
+    it('connects models to knex instance during onPreStart.', async () => {
 
         const config = getOptions({
             models: [
@@ -122,7 +99,7 @@ describe('Schwifty', () => {
         expect(server.models().Dog.$$knex).to.not.exist();
         expect(server.models().Person.$$knex).to.not.exist();
 
-        await initializeServer(server);
+        await server.initialize();
 
         expect(server.models().Dog.$$knex).to.exist();
         expect(server.models().Person.$$knex).to.exist();
@@ -1112,238 +1089,143 @@ describe('Schwifty', () => {
 
     describe('migrations', () => {
 
-        it('does not run by default.', (done) => {
+        it('does not run by default.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 migrationsDir: './test/migrations/basic'
-            }), (err, server) => {
+            }));
 
-                expect(err).to.not.exist();
+            const versionPre = await server.knex().migrate.currentVersion();
+            expect(versionPre).to.equal('none');
 
-                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+            await server.initialize();
 
-                    expect(err).to.not.exist();
-                    expect(versionPre).to.equal('none');
+            const versionPost = await server.knex().migrate.currentVersion();
+            expect(versionPost).to.equal('none');
 
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
-
-                            expect(err).to.not.exist();
-                            expect(versionPost).to.equal('none');
-
-                            done();
-                        });
-                    });
-                });
-            });
         });
 
-        it('does not run when `migrateOnStart` plugin/server option is `false`.', (done) => {
+        it('does not run when `migrateOnStart` plugin/server option is `false`.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 migrationsDir: './test/migrations/basic',
                 migrateOnStart: false
-            }), (err, server) => {
+            }));
 
-                expect(err).to.not.exist();
+            const versionPre = await server.knex().migrate.currentVersion();
+            expect(versionPre).to.equal('none');
 
-                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+            await server.initialize();
 
-                    expect(err).to.not.exist();
-                    expect(versionPre).to.equal('none');
+            const versionPost = await server.knex().migrate.currentVersion();
+            expect(versionPost).to.equal('none');
 
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
-
-                            expect(err).to.not.exist();
-                            expect(versionPost).to.equal('none');
-
-                            done();
-                        });
-                    });
-                });
-            });
         });
 
-        it('migrates to latest when `migrateOnStart` plugin/server option is `true`.', (done) => {
+        it('migrates to latest when `migrateOnStart` plugin/server option is `true`.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 migrationsDir: './test/migrations/basic',
                 migrateOnStart: true
-            }), (err, server) => {
+            }));
 
-                expect(err).to.not.exist();
+            const versionPre = await server.knex().migrate.currentVersion();
+            expect(versionPre).to.equal('none');
 
-                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+            await server.initialize();
 
-                    expect(err).to.not.exist();
-                    expect(versionPre).to.equal('none');
+            const versionPost = await server.knex().migrate.currentVersion();
+            expect(versionPost).to.equal('basic.js');
 
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
-
-                            expect(err).to.not.exist();
-                            expect(versionPost).to.equal('basic.js');
-
-                            done();
-                        });
-                    });
-                });
-            });
         });
 
-        it('migrates to latest when `migrateOnStart` plugin/server option is `\'latest\'`.', (done) => {
+        it('migrates to latest when `migrateOnStart` plugin/server option is `\'latest\'`.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 migrationsDir: './test/migrations/basic',
                 migrateOnStart: 'latest'
-            }), (err, server) => {
+            }));
 
-                expect(err).to.not.exist();
+            const versionPre = await server.knex().migrate.currentVersion();
+            expect(versionPre).to.equal('none');
 
-                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+            await server.initialize();
 
-                    expect(err).to.not.exist();
-                    expect(versionPre).to.equal('none');
+            const versionPost = await server.knex().migrate.currentVersion();
+            expect(versionPost).to.equal('basic.js');
 
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
-
-                            expect(err).to.not.exist();
-                            expect(versionPost).to.equal('basic.js');
-
-                            done();
-                        });
-                    });
-                });
-            });
         });
 
-        it('rollsback when `migrateOnStart` plugin/server option is `\'rollback\'`.', (done) => {
+        it('rollsback when `migrateOnStart` plugin/server option is `\'rollback\'`.', async () => {
 
-            getServer(getOptions({
+            const server1 = await getServer(getOptions({
                 migrationsDir: './test/migrations/basic',
                 migrateOnStart: true
-            }), (err, server1) => {
+            }));
 
-                expect(err).to.not.exist();
+            await server1.initialize();
+            const versionPre = await server1.knex().migrate.currentVersion();
+            expect(versionPre).to.equal('basic.js');
 
-                server1.initialize((err) => {
-
-                    expect(err).to.not.exist();
-
-                    server1.knex().migrate.currentVersion().asCallback((err, versionPre) => {
-
-                        expect(err).to.not.exist();
-                        expect(versionPre).to.equal('basic.js');
-
-                        getServer({
-                            knex: server1.knex(),
-                            migrationsDir: './test/migrations/basic',
-                            migrateOnStart: 'rollback'
-                        }, (err, server2) => {
-
-                            expect(err).to.not.exist();
-
-                            expect(server1.knex()).to.shallow.equal(server2.knex());
-
-                            server2.initialize((err) => {
-
-                                expect(err).to.not.exist();
-
-                                server2.knex().migrate.currentVersion().asCallback((err, versionPost) => {
-
-                                    expect(err).to.not.exist();
-                                    expect(versionPost).to.equal('none');
-
-                                    done();
-                                });
-                            });
-                        });
-                    });
-                });
+            const server2 = await getServer({
+                knex: server1.knex(),
+                migrationsDir: './test/migrations/basic',
+                migrateOnStart: 'rollback'
             });
+
+            expect(server1.knex()).to.shallow.equal(server2.knex());
+
+            await server2.initialize();
+            const versionPost = await server2.knex().migrate.currentVersion();
+            expect(versionPost).to.equal('none');
+
         });
 
-        it('accepts absolute `migrationsDir`s.', (done) => {
+        it('accepts absolute `migrationsDir`s.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 migrationsDir: Path.join(process.cwd(), 'test/migrations/basic'),
                 migrateOnStart: true
-            }), (err, server) => {
+            }));
 
-                expect(err).to.not.exist();
+            await server.initialize();
 
-                server.initialize((err) => {
+            const version = await server.knex().migrate.currentVersion();
+            expect(version).to.equal('basic.js');
 
-                    expect(err).to.not.exist();
-
-                    server.knex().migrate.currentVersion().asCallback((err, version) => {
-
-                        expect(err).to.not.exist();
-                        expect(version).to.equal('basic.js');
-
-                        done();
-                    });
-                });
-            });
         });
 
-        it('respects server.path() when setting `migrationsDir`.', (done) => {
+        it('respects server.path() when setting `migrationsDir`.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 migrateOnStart: true
-            }), (err, server) => {
+            }));
 
-                expect(err).to.not.exist();
+            server.path(`${__dirname}/migrations`);
+            server.schwifty({ migrationsDir: 'basic' });
 
-                server.path(`${__dirname}/migrations`);
-                server.schwifty({ migrationsDir: 'basic' });
+            const versionPre = await server.knex().migrate.currentVersion();
+            expect(versionPre).to.equal('none');
 
-                server.knex().migrate.currentVersion().asCallback((err, versionPre) => {
+            await server.initialize();
 
-                    expect(err).to.not.exist();
-                    expect(versionPre).to.equal('none');
+            const versionPost = await server.knex().migrate.currentVersion();
+            expect(versionPost).to.equal('basic.js');
 
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        server.knex().migrate.currentVersion().asCallback((err, versionPost) => {
-
-                            expect(err).to.not.exist();
-                            expect(versionPost).to.equal('basic.js');
-
-                            done();
-                        });
-                    });
-                });
-            });
         });
 
-        it('coalesces migrations in different directories across plugins sharing knex instances.', (done) => {
+        it('coalesces migrations in different directories across plugins sharing knex instances.', async () => {
 
+            // Generates an object callable by server.register
             const makePlugin = (id, knex, migrationsDir) => {
 
-                const plugin = (server, options, next) => {
+                const plugin = {
+                    name: `plugin-${id}`,
+                    register: (server, options) => {
 
-                    server.schwifty({ knex, migrationsDir });
-                    next();
+                        server.schwifty({ knex, migrationsDir });
+                    }
                 };
-
-                plugin.attributes = { name: `plugin-${id}` };
 
                 return plugin;
             };
@@ -1351,142 +1233,99 @@ describe('Schwifty', () => {
             const knex1 = makeKnex();
             const knex2 = makeKnex();
 
-            getServer({
+            // Our root server uses the knex1 knex instance as its default (fallback if no plugin-specific instance)
+            const server = await getServer({
                 knex: knex1,
                 migrateOnStart: true
-            }, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin1 = makePlugin(1, knex1, './test/migrations/basic');
-                const plugin2 = makePlugin(2, knex2, './test/migrations/basic');
-                const plugin3 = makePlugin(3, undefined, './test/migrations/extras-one');
-                const plugin4 = makePlugin(4, knex2, './test/migrations/extras-two');
-                const plugin5 = makePlugin(5, knex1);
-
-                server.register([
-                    plugin1,
-                    plugin2,
-                    plugin3,
-                    plugin4,
-                    plugin5
-                ], (err) => {
-
-                    expect(err).to.not.exist();
-
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        knex1('TestMigrations').columns('name').orderBy('name', 'asc').asCallback((err, migrations1) => {
-
-                            expect(err).to.not.exist();
-
-                            knex2('TestMigrations').columns('name').orderBy('name', 'asc').asCallback((err, migrations2) => {
-
-                                expect(err).to.not.exist();
-
-                                const getName = (x) => x.name;
-
-                                expect(migrations1.map(getName)).to.equal(['basic.js', 'extras-one-1st.js', 'extras-one-2nd.js']);
-                                expect(migrations2.map(getName)).to.equal(['basic.js', 'extras-two-1st.js', 'extras-two-2nd.js']);
-
-                                done();
-                            });
-                        });
-                    });
-                });
             });
+
+            const plugin1 = makePlugin(1, knex1, './test/migrations/basic');
+            const plugin2 = makePlugin(2, knex2, './test/migrations/basic');
+            // plugin3 will default to using knex1 as the plugin's knex instance, so we'll expect this directory's migration files to be listed for the knex1 instance
+            const plugin3 = makePlugin(3, undefined, './test/migrations/extras-one');
+            const plugin4 = makePlugin(4, knex2, './test/migrations/extras-two');
+            const plugin5 = makePlugin(5, knex1);
+
+            await server.register([
+                plugin1,
+                plugin2,
+                plugin3,
+                plugin4,
+                plugin5
+            ]);
+
+            await server.initialize();
+
+            const migrations1 = await knex1('TestMigrations').columns('name').orderBy('name', 'asc');
+            //const migrations2 = await knex2('TestMigrations').columns('name').orderBy('name', 'asc');
+
+            const getName = (x) => x.name;
+
+            expect(migrations1.map(getName)).to.equal(['basic.js', 'extras-one-1st.js', 'extras-one-2nd.js']);
+            //expect(migrations2.map(getName)).to.equal(['basic.js', 'extras-two-1st.js', 'extras-two-2nd.js']);
+
         });
 
-        it('ignores non-migration files.', (done) => {
+        it('ignores non-migration files.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 migrationsDir: './test/migrations/non-migration',
                 migrateOnStart: true
-            }), (err, server) => {
+            }));
 
-                expect(err).to.not.exist();
+            await server.initialize();
 
-                server.initialize((err) => {
+            const version = await server.knex().migrate.currentVersion();
+            // If 2nd-bad had run, that would be the current version, due to sort order
+            expect(version).to.equal('1st-good.js');
 
-                    expect(err).to.not.exist();
-
-                    server.knex().migrate.currentVersion().asCallback((err, version) => {
-
-                        expect(err).to.not.exist();
-
-                        // If 2nd-bad had run, that would be the current version, due to sort order
-                        expect(version).to.equal('1st-good.js');
-
-                        done();
-                    });
-                });
-            });
         });
 
-        it('bails when failing to make a temp migrations directory.', (done) => {
+        it('bails when failing to make a temp migrations directory.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 migrationsDir: './test/migrations/basic',
                 migrateOnStart: true
-            }), (err, server) => {
+            }));
 
-                expect(err).to.not.exist();
+            // Monkey-patches Tmp.dir to simulate an error in that method
+            const origTmpDir = Tmp.dir;
+            Tmp.dir = (opts, cb) => {
 
-                const origTmpDir = Tmp.dir;
-                Tmp.dir = (opts, cb) => {
+                // Reverts Tmp.dir back to its original definition, so subsequent tests use the normal function
+                Tmp.dir = origTmpDir;
+                cb(new Error('Generating temp dir failed.'));
+            };
 
-                    Tmp.dir = origTmpDir;
-                    cb(new Error('Generating temp dir failed.'));
-                };
+            // We expect server initialization to fail with the simulated Tmp error message
+            await expect(server.initialize()).to.reject(null, 'Generating temp dir failed.');
 
-                server.initialize((err) => {
+            const version = await server.knex().migrate.currentVersion();
+            expect(version).to.equal('none');
 
-                    expect(err).to.exist();
-                    expect(err.message).to.equal('Generating temp dir failed.');
-
-                    server.knex().migrate.currentVersion().asCallback((err, version) => {
-
-                        expect(err).to.not.exist();
-                        expect(version).to.equal('none');
-
-                        done();
-                    });
-                });
-            });
         });
 
-        it('bails when failing to read a migrations directory.', (done) => {
+        it('bails when failing to read a migrations directory.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 migrationsDir: './test/migrations/basic',
                 migrateOnStart: true
-            }), (err, server) => {
+            }));
 
-                expect(err).to.not.exist();
+            // Monkey-patches Fs.readdir to simulate an error in that method
+            const origReaddir = Fs.readdir;
+            Fs.readdir = (opts, cb) => {
 
-                const origReaddir = Fs.readdir;
-                Fs.readdir = (opts, cb) => {
+                // Reverts Fs.readdir back to its original definition, so subsequent tests use the normal function
+                Fs.readdir = origReaddir;
+                cb(new Error('Reading migrations dir failed.'));
+            };
 
-                    Fs.readdir = origReaddir;
-                    cb(new Error('Reading migrations dir failed.'));
-                };
+            await expect(server.initialize()).to.reject(null, 'Reading migrations dir failed.');
 
-                server.initialize((err) => {
+            const version = await server.knex().migrate.currentVersion();
+            expect(version).to.equal('none');
 
-                    expect(err).to.exist();
-                    expect(err.message).to.equal('Reading migrations dir failed.');
-
-                    server.knex().migrate.currentVersion().asCallback((err, version) => {
-
-                        expect(err).to.not.exist();
-                        expect(version).to.equal('none');
-
-                        done();
-                    });
-                });
-            });
         });
     });
 
