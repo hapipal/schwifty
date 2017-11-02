@@ -123,208 +123,163 @@ describe('Schwifty', () => {
     });
 
 
-    it('tears-down all connections onPostStop.', (done) => {
+    it('tears-down all connections onPostStop.', async () => {
 
-        getServer(getOptions(), (err, server) => {
+        const server = await getServer(getOptions());
 
-            let toredown = 0;
-            expect(err).to.not.exist();
+        let toredown = 0;
 
-            server.initialize((err) => {
+        await server.initialize();
+        expect(toredown).to.equal(0);
 
-                expect(err).to.not.exist();
-                expect(toredown).to.equal(0);
+        const plugin1 = {
+            name: 'plugin-one',
+            register: (srv, opts) => {
 
-                const plugin1 = (srv, opts, next) => {
+                // Creates plugin-specific knex instance using the base connection configuration specified in getOptions
+                srv.schwifty(getOptions({
+                    models: [
+                        TestModels.Dog,
+                        TestModels.Person
+                    ]
+                }));
 
-                    srv.schwifty(getOptions({
-                        models: [
-                            TestModels.Dog,
-                            TestModels.Person
-                        ]
-                    }));
-
-                    // Monkeypatch the destroy func
-                    const oldDestroy = srv.knex().destroy;
-                    srv.knex().destroy = (cb) => {
-
-                        ++toredown;
-                        return oldDestroy(cb);
-                    };
-
-                    next();
-                };
-
-                plugin1.attributes = { name: 'plugin-one' };
-
-                const plugin2 = (srv, opts, next) => {
-
-                    srv.schwifty([TestModels.Zombie]);
-
-                    // Plugin 2 will use server.root's knex connection
-                    expect(srv.knex()).to.shallow.equal(srv.root.knex());
-
-                    next();
-                };
-
-                plugin2.attributes = { name: 'plugin-two' };
-
-                const oldDestroy = server.knex().destroy;
-                server.knex().destroy = (cb) => {
+                // Monkeypatch the destroy func
+                const oldDestroy = srv.knex().destroy;
+                srv.knex().destroy = () => {
 
                     ++toredown;
-                    return oldDestroy(cb);
+                    // Returns a Promise, which is await'd in lib/index::internals.stop
+                    return oldDestroy();
                 };
 
-                server.register([plugin1, plugin2], (err) => {
+            }
+        };
 
-                    expect(err).to.not.exist();
+        const plugin2 = {
+            name: 'plugin-two',
+            register: (srv, opts) => {
 
-                    server.initialize((err) => {
+                srv.schwifty([TestModels.Zombie]);
 
-                        expect(err).to.not.exist();
+                // Plugin 2 will use server.root's knex connection
+                // Referencing server.knex() is a bit of a hacky though required workaround to to inspect the root server's knex() decoration, given that hapi17 removed server.root ( this test previously used srv.root.knex() )
+                // In this case, because we can be certain that server is the root server for plugin2, we can also be certain that this comparison will work. There is no guarantee such referencing will work in
+                // scenarios even slightly more complicated than this
+                expect(srv.knex()).to.shallow.equal(server.knex());
 
-                        server.stop((err) => {
+            }
+        };
 
-                            expect(err).to.not.exist();
+        const oldDestroy = server.knex().destroy;
+        server.knex().destroy = () => {
 
-                            // 2 pools were destroyed, plugin2 shared knex with the server root
-                            expect(toredown).to.equal(2);
-                            done();
-                        });
-                    });
-                });
-            });
-        });
+            ++toredown;
+            return oldDestroy();
+        };
+
+        await server.register([plugin1, plugin2]);
+        await server.initialize();
+        await server.stop();
+        // 2 pools were destroyed, plugin2 shared knex with the server root
+        expect(toredown).to.equal(2);
+
     });
 
-    it('does not tear-down connections onPostStop with option `teardownOnStop` false.', (done) => {
+    it('does not tear-down connections onPostStop with option `teardownOnStop` false.', async () => {
 
         const options = getOptions({ teardownOnStop: false });
+        const server = await getServer(options);
+        let toredown = 0;
 
-        getServer(options, (err, server) => {
+        await server.initialize();
+        expect(toredown).to.equal(0);
 
-            let toredown = 0;
-            expect(err).to.not.exist();
+        server.ext('onPreStop', (srv) => {
 
-            server.initialize((err) => {
+            // Monkeypatch the destroy func
+            const oldDestroy = srv.knex().destroy;
+            srv.knex().destroy = () => {
 
-                expect(err).to.not.exist();
-                expect(toredown).to.equal(0);
+                ++toredown;
+                return oldDestroy();
+            };
 
-                server.ext('onPreStop', (srv, next) => {
-
-                    // Monkeypatch the destroy func
-                    const oldDestroy = srv.knex().destroy;
-                    srv.knex().destroy = (cb) => {
-
-                        ++toredown;
-                        return oldDestroy(cb);
-                    };
-
-                    expect(server.knex()).to.exist();
-                    next();
-                });
-
-                server.stop((err) => {
-
-                    expect(err).to.not.exist();
-                    expect(toredown).to.equal(0);
-                    done();
-                });
-            });
+            expect(server.knex()).to.exist();
         });
+
+        await server.stop();
+        expect(toredown).to.equal(0);
+
     });
 
-    it('can be registered multiple times.', (done) => {
+    it('can be registered multiple times.', async () => {
 
-        getServer(getOptions({
+        const server = await getServer(getOptions({
             models: [
                 TestModels.Dog,
                 TestModels.Person
             ]
-        }), (err, server) => {
+        }));
 
-            expect(err).to.not.exist();
-            expect(server.registrations.schwifty).to.exist();
+        expect(server.registrations.schwifty).to.exist();
 
-            server.register({
-                register: Schwifty,
-                options: { models: [TestModels.Movie, TestModels.Zombie] }
-            }, (err) => {
-
-                expect(err).not.to.exist();
-
-                // Ensure all models got added
-                expect(Object.keys(server.models())).to.only.contain([
-                    'Dog',
-                    'Person',
-                    'Movie',
-                    'Zombie'
-                ]);
-
-                done();
-            });
+        await server.register({
+            plugin: Schwifty,
+            options: { models: [TestModels.Movie, TestModels.Zombie] }
         });
+
+        expect(Object.keys(server.models())).to.only.contain([
+            'Dog',
+            'Person',
+            'Movie',
+            'Zombie'
+        ]);
+
     });
 
     describe('plugin registration', () => {
 
-        it('takes `models` option as a relative path.', (done) => {
+        it('takes `models` option as a relative path.', async () => {
 
             const options = getOptions({ models: Path.normalize('./test/' + modelsFile) });
+            const server = await getServer(options);
+            const models = server.models();
 
-            getServer(options, (err, server) => {
+            expect(models.Dog).to.exist();
+            expect(models.Person).to.exist();
 
-                expect(err).to.not.exist();
-
-                const models = server.models();
-
-                expect(models.Dog).to.exist();
-                expect(models.Person).to.exist();
-
-                done();
-            });
         });
 
-        it('takes `models` option as an absolute path.', (done) => {
+        it('takes `models` option as an absolute path.', async () => {
 
             const options = getOptions({ models: Path.normalize(__dirname + '/' + modelsFile) });
+            const server = await getServer(options);
+            const models = server.models();
 
-            getServer(options, (err, server) => {
+            expect(models.Dog).to.exist();
+            expect(models.Person).to.exist();
 
-                expect(err).to.not.exist();
-
-                const models = server.models();
-                expect(models.Dog).to.exist();
-                expect(models.Person).to.exist();
-
-                done();
-            });
         });
 
-        it('takes `models` option respecting server.path().', (done) => {
+        it('takes `models` option respecting server.path().', async () => {
 
-            const server = new Hapi.Server();
+            const server = Hapi.server();
             server.path(__dirname);
 
-            server.register({
-                register: Schwifty,
+            await server.register({
+                plugin: Schwifty,
                 options: getOptions({ models: modelsFile })
-            }, (err) => {
-
-                expect(err).to.not.exist();
-
-                const models = server.models();
-
-                expect(models.Dog).to.exist();
-                expect(models.Person).to.exist();
-
-                done();
             });
+
+            const models = server.models();
+
+            expect(models.Dog).to.exist();
+            expect(models.Person).to.exist();
+
         });
 
-        it('takes `models` option as an array of objects.', (done) => {
+        it('takes `models` option as an array of objects.', async () => {
 
             const options = getOptions({
                 models: [
@@ -333,99 +288,62 @@ describe('Schwifty', () => {
                 ]
             });
 
-            getServer(options, (err, server) => {
+            const server = await getServer(options);
+            const models = server.models();
 
-                expect(err).to.not.exist();
+            expect(models.Dog).to.exist();
+            expect(models.Person).to.exist();
 
-                const models = server.models();
-                expect(models.Dog).to.exist();
-                expect(models.Person).to.exist();
-
-                done();
-            });
         });
 
-        it('throws if the `models` option is not an array or string.', (done) => {
+        it('throws if the `models` option is not an array or string.', async () => {
 
             const options = getOptions({ models: {} });
+            // We check the message against a regex because it also contains info on the server's knex connection and models, which are impractical / impossible to match exactly via string
+            await expect(getServer(options)).to.reject(null, /^Bad plugin options passed to schwifty\./);
 
-            expect(() => {
-
-                getServer(options, () => {
-
-                    return done(new Error('Should not make it here.'));
-                });
-            }).to.throw(/^Bad plugin options passed to schwifty\./);
-
-            done();
         });
 
-        it('throws when `teardownOnStop` is specified more than once.', (done) => {
+        it('throws when `teardownOnStop` is specified more than once.', async () => {
 
             const options = getOptions({ teardownOnStop: false });
+            const server = await getServer(options);
+            const plugin = {
+                name: 'my-plugin',
+                register: async (srv, opts) => {
 
-            getServer(options, (err, server) => {
+                    await srv.register({ options, plugin: Schwifty });
+                }
+            };
 
-                expect(err).to.not.exist();
+            await expect(server.register(plugin)).to.reject(null, 'Schwifty\'s teardownOnStop option can only be specified once.');
 
-                const plugin = (srv, opts, next) => {
-
-                    srv.register({ options, register: Schwifty }, next);
-                };
-
-                plugin.attributes = { name: 'my-plugin' };
-
-                expect(() => {
-
-                    server.register(plugin, () => done('Should not make it here.'));
-                }).to.throw('Schwifty\'s teardownOnStop option can only be specified once.');
-                // }).to.throw(/Schwifty\'s teardownOnStop option can only be specified once./);
-
-                done();
-            });
         });
 
-        it('throws when `migrateOnStart` is specified more than once.', (done) => {
+        it('throws when `migrateOnStart` is specified more than once.', async () => {
 
-            getServer({ migrateOnStart: false }, (err, server) => {
+            const server = await getServer({ migrateOnStart: false });
+            const plugin = {
+                name: 'my-plugin',
+                register: async (srv, opts) => {
 
-                expect(err).to.not.exist();
+                    await srv.register({ plugin: Schwifty, options: { migrateOnStart: false } });
+                }
+            };
 
-                const plugin = (srv, opts, next) => {
+            await expect(server.register(plugin)).to.reject(null, 'Schwifty\'s migrateOnStart option can only be specified once.');
 
-                    srv.register({ register: Schwifty, options: { migrateOnStart: false } }, next);
-                };
-
-                plugin.attributes = { name: 'my-plugin' };
-
-                expect(() => {
-
-                    server.register(plugin, () => done(new Error('Should not make it here.')));
-                }).to.throw('Schwifty\'s migrateOnStart option can only be specified once.');
-
-                done();
-            });
         });
 
-        it('throws when multiple knex instances passed to same server.', (done) => {
+        it('throws when multiple knex instances passed to same server.', async () => {
 
-            getServer({ knex: Knex(basicKnexConfig) }, (err, server) => {
+            const server = await getServer({ knex: Knex(basicKnexConfig) });
 
-                expect(err).to.not.exist();
+            await expect(server.register({
+                plugin: Schwifty,
+                options: { knex: Knex(basicKnexConfig) }
+            })).to.reject(null, 'A knex instance/config may be specified only once per server or plugin.');
 
-                expect(() => {
-
-                    server.register({
-                        register: Schwifty,
-                        options: { knex: Knex(basicKnexConfig) }
-                    }, (ignoreErr) => {
-
-                        return done(new Error('Should not make it here.'));
-                    });
-                }).to.throw('A knex instance/config may be specified only once per server or plugin.');
-
-                done();
-            });
         });
     });
 
@@ -1087,7 +1005,7 @@ describe('Schwifty', () => {
         });
     });
 
-    describe.only('migrations', () => {
+    describe('migrations', () => {
 
         it('does not run by default.', async () => {
 
