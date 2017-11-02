@@ -1087,7 +1087,7 @@ describe('Schwifty', () => {
         });
     });
 
-    describe('migrations', () => {
+    describe.only('migrations', () => {
 
         it('does not run by default.', async () => {
 
