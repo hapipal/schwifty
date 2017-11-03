@@ -1092,7 +1092,7 @@ describe('Schwifty', () => {
         });
     });
 
-    describe.only('request.models() and server.models() decorations', () => {
+    describe('request.models() and server.models() decorations', () => {
 
         it('return empty object before server initialization.', async () => {
 
@@ -1353,7 +1353,7 @@ describe('Schwifty', () => {
 
         describe('$validate()', () => {
 
-            it('validates correct schema input.', (done) => {
+            it('validates correct schema input.', () => {
 
                 const chompy = new TestModels.Zombie();
 
@@ -1368,10 +1368,9 @@ describe('Schwifty', () => {
                     lastName: 'Chomperson'
                 });
 
-                done();
             });
 
-            it('defaults to validate itself if no json passed.', (done) => {
+            it('defaults to validate itself if no json passed.', () => {
 
                 const chompy = new TestModels.Zombie();
                 chompy.firstName = 'Chompy';
@@ -1383,10 +1382,9 @@ describe('Schwifty', () => {
                     favoriteFood: 'Tasty brains'
                 });
 
-                done();
             });
 
-            it('throws Objection.ValidationError if required schema item not provided to $validate().', (done) => {
+            it('throws Objection.ValidationError if required schema item not provided to $validate().', () => {
 
                 const chompy = new TestModels.Zombie();
 
@@ -1397,10 +1395,9 @@ describe('Schwifty', () => {
                     });
                 }).to.throw(Objection.ValidationError, /\\\"firstName\\\" is required/);
 
-                done();
             });
 
-            it('throws Objection.ValidationError if bad types are passed.', (done) => {
+            it('throws Objection.ValidationError if bad types are passed.', () => {
 
                 const chompy = new TestModels.Zombie();
 
@@ -1412,10 +1409,9 @@ describe('Schwifty', () => {
                     });
                 }).to.throw(Objection.ValidationError, /\\\"lastName\\\" must be a string/);
 
-                done();
             });
 
-            it('throws Objection.ValidationError with multiple errors per key.', (done) => {
+            it('throws Objection.ValidationError with multiple errors per key.', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1468,10 +1464,9 @@ describe('Schwifty', () => {
                     ]
                 });
 
-                done();
             });
 
-            it('can modify validation schema using model.$beforeValidate().', (done) => {
+            it('can modify validation schema using model.$beforeValidate().', () => {
 
                 let seenSchema;
                 let seenJson;
@@ -1503,10 +1498,9 @@ describe('Schwifty', () => {
                 expect(seenJson).to.equal(persnickety);
                 expect(seenOptions).to.equal({});
 
-                done();
             });
 
-            it('skips validation if model is missing joiSchema.', (done) => {
+            it('skips validation if model is missing joiSchema.', () => {
 
                 const anythingGoes = new Schwifty.Model();
 
@@ -1517,10 +1511,9 @@ describe('Schwifty', () => {
 
                 expect(anythingGoes.$validate(whateverSchema)).to.equal(whateverSchema);
 
-                done();
             });
 
-            it('skips validation when `skipValidation` option is passed to $validate().', (done) => {
+            it('skips validation when `skipValidation` option is passed to $validate().', () => {
 
                 const chompy = new TestModels.Zombie();
 
@@ -1531,10 +1524,9 @@ describe('Schwifty', () => {
 
                 expect(chompy.$validate(whateverSchema, { skipValidation: true })).to.equal(whateverSchema);
 
-                done();
             });
 
-            it('allows missing required properties when `patch` option is passed to $validate().', (done) => {
+            it('allows missing required properties when `patch` option is passed to $validate().', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1551,21 +1543,19 @@ describe('Schwifty', () => {
 
                 expect(instance.$validate(missingField, { patch: true })).to.equal(missingField);
 
-                done();
             });
         });
 
         describe('static method getJoiSchema(patch)', () => {
 
-            it('returns nothing when there\'s no Joi schema.', (done) => {
+            it('returns nothing when there\'s no Joi schema.', () => {
 
                 expect(Schwifty.Model.getJoiSchema()).to.not.exist();
                 expect(Schwifty.Model.getJoiSchema(true)).to.not.exist();
 
-                done();
             });
 
-            it('memoizes the plain schema.', (done) => {
+            it('memoizes the plain schema.', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1576,10 +1566,9 @@ describe('Schwifty', () => {
 
                 expect(Model.getJoiSchema()).to.shallow.equal(Model.getJoiSchema());
 
-                done();
             });
 
-            it('memoizes the patch schema.', (done) => {
+            it('memoizes the patch schema.', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1591,10 +1580,9 @@ describe('Schwifty', () => {
                 expect(Model.getJoiSchema()).to.not.shallow.equal(Model.getJoiSchema(true));
                 expect(Model.getJoiSchema(true)).to.shallow.equal(Model.getJoiSchema(true));
 
-                done();
             });
 
-            it('forgets past memoization on extended classes.', (done) => {
+            it('forgets past memoization on extended classes.', () => {
 
                 const ModelOne = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1618,13 +1606,12 @@ describe('Schwifty', () => {
                 expect(keysOf(ModelTwo.getJoiSchema())).to.only.include(['a', 'b']);
                 expect(keysOf(ModelTwo.getJoiSchema(true))).to.only.include(['a', 'b']);
 
-                done();
             });
         });
 
         describe('static getter jsonAttributes', () => {
 
-            it('lists attributes that are specified as Joi objects or arrays.', (done) => {
+            it('lists attributes that are specified as Joi objects or arrays.', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1643,17 +1630,15 @@ describe('Schwifty', () => {
                 expect(jsonAttributes.length).to.equal(2);
                 expect(jsonAttributes).to.contain(['arr', 'obj']);
 
-                done();
             });
 
-            it('returns null for a missing Joi schema.', (done) => {
+            it('returns null for a missing Joi schema.', () => {
 
                 expect(Schwifty.Model.jsonAttributes).to.equal(null);
 
-                done();
             });
 
-            it('returns an empty array for an empty Joi schema.', (done) => {
+            it('returns an empty array for an empty Joi schema.', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1664,10 +1649,9 @@ describe('Schwifty', () => {
 
                 expect(Model.jsonAttributes).to.equal([]);
 
-                done();
             });
 
-            it('is memoized.', (done) => {
+            it('is memoized.', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1683,10 +1667,9 @@ describe('Schwifty', () => {
 
                 expect(Model.jsonAttributes).to.shallow.equal(Model.jsonAttributes);
 
-                done();
             });
 
-            it('if set, prefers set value.', (done) => {
+            it('if set, prefers set value.', () => {
 
                 // Not affected by parent class
 
@@ -1714,14 +1697,13 @@ describe('Schwifty', () => {
 
                 expect(ModelTwo.jsonAttributes).to.equal(false);
 
-                done();
             });
         });
 
         describe('static setter jsonAttributes', () => {
 
             // A quick dip into unit (vs behavioral) testing!
-            it('sets $$schwiftyJsonAttributes', (done) => {
+            it('sets $$schwiftyJsonAttributes', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1742,7 +1724,6 @@ describe('Schwifty', () => {
                 const emptyJsonAttrs = Model.jsonAttributes = [];
                 expect(emptyJsonAttrs).to.shallow.equal(Model.$$schwiftyJsonAttributes);
 
-                done();
             });
         });
     });
@@ -1751,7 +1732,7 @@ describe('Schwifty', () => {
 
         const defaultErrorMsg = 'Models are incompatible.  One model must extend the other, they must have the same name, and share the same tableName.';
 
-        it('throws if one model doesn\'t extend the other.', (done) => {
+        it('throws if one model doesn\'t extend the other.', () => {
 
             const ModelA = class Named extends Objection.Model {};
             const ModelB = class Named extends Objection.Model {};
@@ -1759,10 +1740,9 @@ describe('Schwifty', () => {
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.throw(defaultErrorMsg);
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.throw(defaultErrorMsg);
 
-            done();
         });
 
-        it('throws if one model doesn\'t have the same name as the other.', (done) => {
+        it('throws if one model doesn\'t have the same name as the other.', () => {
 
             const ModelA = class NameOne extends Objection.Model {};
             const ModelB = class NameTwo extends ModelA {};
@@ -1770,10 +1750,9 @@ describe('Schwifty', () => {
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.throw(defaultErrorMsg);
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.throw(defaultErrorMsg);
 
-            done();
         });
 
-        it('throws if one model doesn\'t have the same table as the other.', (done) => {
+        it('throws if one model doesn\'t have the same table as the other.', () => {
 
             const ModelA = class Named extends Objection.Model {};
             ModelA.tableName = 'x';
@@ -1784,10 +1763,9 @@ describe('Schwifty', () => {
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.throw(defaultErrorMsg);
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.throw(defaultErrorMsg);
 
-            done();
         });
 
-        it('throws with custom message.', (done) => {
+        it('throws with custom message.', () => {
 
             const ModelA = class NameOne extends Objection.Model {};
             const ModelB = class NameTwo extends ModelA {};
@@ -1795,10 +1773,9 @@ describe('Schwifty', () => {
 
             expect(() => Schwifty.assertCompatible(ModelA, ModelB, customMessage)).to.throw(customMessage);
 
-            done();
         });
 
-        it('no-ops when one model extends the other, they share the same name, and share the same table.', (done) => {
+        it('no-ops when one model extends the other, they share the same name, and share the same table.', () => {
 
             const ModelA = class Named extends Objection.Model {};
             ModelA.tableName = 'x';
@@ -1809,7 +1786,6 @@ describe('Schwifty', () => {
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.not.throw();
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.not.throw();
 
-            done();
         });
     });
 });
