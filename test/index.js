@@ -405,8 +405,7 @@ describe('Schwifty', () => {
 
         });
 
-        it.only('aggregates model definitions within a plugin.', (done) => {
-
+        it('aggregates model definitions within a plugin.', async () => {
 
             const server = await getServer(getOptions({
                 models: [
@@ -418,21 +417,9 @@ describe('Schwifty', () => {
             const rootState = state(getRootRealm(server));
             expect(Object.keys(rootState.collector.models)).to.equal(['Dog', 'Person']);
 
-
-            /////////////////////////
-            getServer(getOptions({
-                models: [
-                    TestModels.Dog,
-                    TestModels.Person
-                ]
-            }), (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const rootState = state(server.root);
-                expect(Object.keys(rootState.collector.models)).to.equal(['Dog', 'Person']);
-
-                const plugin = (srv, opts, next) => {
+            const plugin = {
+                name: 'my-plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty({
                         models: [TestModels.Movie]
@@ -441,149 +428,113 @@ describe('Schwifty', () => {
                         models: [TestModels.Zombie]
                     });
 
-                    srv.app.myState = state(srv);
-                    next();
-                };
+                    srv.app.myState = state(srv.realm);
 
-                plugin.attributes = { name: 'my-plugin' };
+                }
+            };
 
-                server.register(plugin, (err) => {
+            await server.register(plugin);
+            await server.initialize();
 
-                    expect(err).to.not.exist();
+            expect(server.app.myState.knexGroup.models).to.equal(['Movie', 'Zombie']);
+            expect(Object.keys(rootState.collector.models)).to.only.contain([
+                'Dog',
+                'Person',
+                'Movie',
+                'Zombie'
+            ]);
 
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        expect(server.app.myState.knexGroup.models).to.equal(['Movie', 'Zombie']);
-
-                        expect(Object.keys(rootState.collector.models)).to.only.contain([
-                            'Dog',
-                            'Person',
-                            'Movie',
-                            'Zombie'
-                        ]);
-
-                        done();
-                    });
-                });
-            });
         });
 
-        it('accepts a single model definition.', (done) => {
+        it('accepts a single model definition.', async () => {
 
-            getServer(getOptions(), (err, server) => {
+            const server = await getServer(getOptions());
 
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
+            const plugin = {
+                name: 'my-plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty(TestModels.Zombie);
-                    next();
-                };
 
-                plugin.attributes = { name: 'my-plugin' };
+                }
+            };
 
-                server.register(plugin, (err) => {
+            await server.register(plugin);
 
-                    expect(err).to.not.exist();
+            const collector = state(server.realm).collector;
+            expect(collector.models.Zombie).to.exist();
 
-                    const collector = state(server).collector;
-                    expect(collector.models.Zombie).to.exist();
-
-                    done();
-                });
-            });
         });
 
-        it('accepts `knex` as a knex instance.', (done) => {
+        it('accepts `knex` as a knex instance.', async () => {
 
             const options = getOptions();
             delete options.knex;
 
-            getServer(options, (err, server) => {
+            const server = await getServer(options);
+            const knex = Knex(basicKnexConfig);
 
-                expect(err).to.not.exist();
-
-                const knex = Knex(basicKnexConfig);
-
-                const plugin = (srv, opts, next) => {
+            const plugin = {
+                name: 'my-plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty({ knex });
                     expect(srv.knex()).to.shallow.equal(knex);
-                    next();
-                };
 
-                plugin.attributes = { name: 'my-plugin' };
+                }
+            };
 
-                server.register(plugin, done);
-            });
+            await server.register(plugin);
+
         });
 
-        it('throws on invalid config.', (done) => {
+        it('throws on invalid config.', async () => {
 
-            getServer(getOptions(), (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
+            const server = await getServer(getOptions());
+            const plugin = {
+                name: 'my-plugin',
+                register: (srv, opts) => {
 
                     expect(() => {
 
                         srv.schwifty({ invalidProp: 'bad' });
                     }).to.throw(/\"invalidProp\" is not allowed/);
 
-                    next();
-                };
+                }
+            };
 
-                plugin.attributes = { name: 'my-plugin' };
+            await server.register(plugin);
 
-                server.register(plugin, (err) => {
-
-                    expect(err).to.not.exist();
-                    done();
-                });
-            });
         });
 
-        it('throws on model name collision.', (done) => {
+        it('throws on model name collision.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 models: [
                     TestModels.Dog,
                     TestModels.Person
                 ]
-            }), (err, server) => {
+            }));
 
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
+            const plugin = {
+                name: 'my-plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty(TestModels.Dog);
-                    next();
-                };
 
-                plugin.attributes = { name: 'my-plugin' };
+                }
+            };
 
-                expect(() => {
+            await expect(server.register(plugin)).to.reject(null, 'Model "Dog" has already been registered.');
 
-                    server.register(plugin, () => {
-
-                        throw new Error('Should not make it here.');
-                    });
-                }).to.throw('Model "Dog" has already been registered.');
-
-                done();
-            });
         });
 
-        it('throws when multiple knex instances passed to same plugin.', (done) => {
+        it('throws when multiple knex instances passed to same plugin.', async () => {
 
-            getServer({}, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
+            const server = await getServer({});
+            const plugin = {
+                name: 'my-plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty({ knex: Knex(basicKnexConfig) });
 
@@ -592,143 +543,114 @@ describe('Schwifty', () => {
                         srv.schwifty({ knex: Knex(basicKnexConfig) });
                     }).to.throw('A knex instance/config may be specified only once per server or plugin.');
 
-                    next();
-                };
+                }
+            };
 
-                plugin.attributes = { name: 'my-plugin' };
+            await server.register(plugin);
 
-                server.register(plugin, done);
-            });
         });
     });
 
     describe('request.knex() and server.knex() decorations', () => {
 
-        it('returns root server\'s knex instance by default.', (done) => {
+        it('returns root server\'s knex instance by default.', async () => {
 
             const knex = makeKnex();
-
-            getServer({ knex }, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
+            const server = await getServer({ knex });
+            const plugin = {
+                name: 'plugin',
+                register: (srv, opts) => {
 
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, reply) => {
+                        handler: (request, h) => {
 
                             expect(request.knex()).to.shallow.equal(knex);
-                            reply({ ok: true });
+                            return { ok: true };
                         }
                     });
 
                     expect(srv.knex()).to.shallow.equal(knex);
-                    next();
-                };
 
-                plugin.attributes = { name: 'plugin' };
+                }
+            };
 
-                server.register(plugin, (err) => {
+            await server.register(plugin);
+            // Root server's knex
+            expect(server.knex()).to.shallow.equal(knex);
 
-                    expect(err).to.not.exist();
+            const res = await server.inject('/plugin');
+            expect(res.result).to.equal({ ok: true });
 
-                    // Root server's knex
-                    expect(server.knex()).to.shallow.equal(knex);
-
-                    server.inject('/plugin', (res) => {
-
-                        expect(res.result).to.equal({ ok: true });
-                        done();
-                    });
-                });
-            });
         });
 
-        it('returns plugin\'s knex instance over root server\'s.', (done) => {
+        it('returns plugin\'s knex instance over root server\'s.', async () => {
 
             const knex1 = makeKnex();
             const knex2 = makeKnex();
 
-            getServer({ knex: knex1 }, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
+            const server = await getServer({ knex: knex1 });
+            const plugin = {
+                name: 'plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty({ knex: knex2 });
 
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, reply) => {
+                        handler: (request, h) => {
 
                             expect(request.knex()).to.shallow.equal(knex2);
-                            reply({ ok: true });
+                            return { ok: true };
                         }
                     });
 
                     expect(srv.knex()).to.shallow.equal(knex2);
-                    next();
-                };
 
-                plugin.attributes = { name: 'plugin' };
+                }
+            };
 
-                server.register(plugin, (err) => {
+            await server.register(plugin);
+            // Root server's knex
+            expect(server.knex()).to.shallow.equal(knex1);
 
-                    expect(err).to.not.exist();
+            const res = await server.inject('/plugin');
+            expect(res.result).to.equal({ ok: true });
 
-                    // Root server's knex
-                    expect(server.knex()).to.shallow.equal(knex1);
-
-                    server.inject('/plugin', (res) => {
-
-                        expect(res.result).to.equal({ ok: true });
-                        done();
-                    });
-                });
-            });
         });
 
-        it('returns null when there are no plugin or root knex instances.', (done) => {
+        it('returns null when there are no plugin or root knex instances.', async () => {
 
-            getServer({}, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
+            const server = await getServer({});
+            const plugin = {
+                name: 'plugin',
+                register: (srv, opts) => {
 
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, reply) => {
+                        handler: (request, h) => {
 
                             expect(request.knex()).to.equal(null);
-                            reply({ ok: true });
+                            return { ok: true };
                         }
                     });
 
                     expect(srv.knex()).to.equal(null);
-                    next();
-                };
 
-                plugin.attributes = { name: 'plugin' };
+                }
+            };
 
-                server.register(plugin, (err) => {
+            await server.register(plugin);
 
-                    expect(err).to.not.exist();
+            // Root server's non-knex
+            expect(server.knex()).to.equal(null);
 
-                    // Root server's non-knex
-                    expect(server.knex()).to.equal(null);
+            const res = await server.inject('/plugin');
+            expect(res.result).to.equal({ ok: true });
 
-                    server.inject('/plugin', (res) => {
-
-                        expect(res.result).to.equal({ ok: true });
-                        done();
-                    });
-                });
-            });
         });
     });
 
@@ -1263,318 +1185,258 @@ describe('Schwifty', () => {
 
     describe('request.models() and server.models() decorations', () => {
 
-        it('return empty object before server initialization.', (done) => {
+        it('return empty object before server initialization.', async () => {
 
-            getServer(getOptions(), (err, server) => {
+            const server = await getServer(getOptions());
 
-                expect(err).not.to.exist();
+            server.route({
+                path: '/',
+                method: 'get',
+                handler: (request, h) => {
 
-                server.route({
-                    path: '/',
-                    method: 'get',
-                    handler: (request, reply) => {
-
-                        expect(request.models()).to.equal({});
-                        expect(request.models(true)).to.equal({});
-                        reply({ ok: true });
-                    }
-                });
-
-                expect(server.models()).to.equal({});
-                expect(server.models(true)).to.equal({});
-
-                server.inject({ url: '/', method: 'get' }, (response) => {
-
-                    expect(response.result).to.equal({ ok: true });
-                    done();
-                });
+                    expect(request.models()).to.equal({});
+                    expect(request.models(true)).to.equal({});
+                    return { ok: true };
+                }
             });
+
+            expect(server.models()).to.equal({});
+            expect(server.models(true)).to.equal({});
+
+            const response = await server.inject('/');
+            expect(response.result).to.equal({ ok: true });
+
         });
 
-        it('return empty object if no models have been added.', (done) => {
+        it('return empty object if no models have been added.', async () => {
 
-            getServer(getOptions(), (err, server) => {
+            const server = await getServer(getOptions());
 
-                expect(err).not.to.exist();
+            server.route({
+                path: '/root',
+                method: 'get',
+                handler: (request, h) => {
 
-                server.route({
-                    path: '/root',
-                    method: 'get',
-                    handler: (request, reply) => {
+                    expect(request.models()).to.equal({});
+                    expect(request.models(true)).to.equal({});
+                    return { ok: 'root' };
+                }
 
-                        expect(request.models()).to.equal({});
-                        expect(request.models(true)).to.equal({});
-                        reply({ ok: 'root' });
-                    }
+            });
 
-                });
+            expect(state(server.realm).knexGroup.models).to.equal([]);
 
-                expect(state(server).knexGroup.models).to.equal([]);
+            expect(server.models()).to.equal({});
+            expect(server.models(true)).to.equal({});
 
-                expect(server.models()).to.equal({});
-                expect(server.models(true)).to.equal({});
-
-
-                // Plugin here to show that models() defaults to [] (schwifty isn't called)
-                const plugin = (srv, opts, next) => {
+            // Plugin here to show that models() defaults to [] (schwifty isn't called)
+            const plugin = {
+                name: 'my-plugin',
+                register: (srv, opts) => {
 
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, reply) => {
+                        handler: (request, h) => {
 
-                            const _knexGroupId = state(srv);
+                            const _knexGroupId = state(srv.realm);
                             expect(_knexGroupId).to.not.exist();
                             const models = request.models();
                             expect(models).to.equal({});
-                            reply({ ok: 'plugin' });
+                            return { ok: 'plugin' };
                         }
                     });
 
-                    next();
-                };
+                }
+            };
 
-                plugin.attributes = { name: 'my-plugin' };
+            await server.register(plugin);
+            await server.initialize();
 
+            const res1 = await server.inject('/root');
+            expect(res1.result).to.equal({ ok: 'root' });
 
-                server.register(plugin, (err) => {
+            const res2 = await server.inject('/plugin');
+            expect(res2.result).to.equal({ ok: 'plugin' });
 
-                    expect(err).to.not.exist();
-
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        server.inject({ url: '/root', method: 'get' }, (res1) => {
-
-                            expect(res1.result).to.equal({ ok: 'root' });
-
-                            server.inject({ url: '/plugin', method: 'get' }, (res2) => {
-
-                                expect(res2.result).to.equal({ ok: 'plugin' });
-                                done();
-                            });
-                        });
-                    });
-                });
-            });
         });
 
-        it('solely return models registered in route\'s realm by default.', (done) => {
+        it('solely return models registered in route\'s realm by default.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 models: [
                     TestModels.Dog,
                     TestModels.Person
                 ]
-            }), (err, server) => {
+            }));
 
-                expect(err).not.to.exist();
+            server.route({
+                path: '/root',
+                method: 'get',
+                handler: (request, h) => {
 
-                server.route({
-                    path: '/root',
-                    method: 'get',
-                    handler: (request, reply) => {
-
-                        const models = request.models();
-                        expect(models).to.have.length(2);
-                        expect(models.Dog.tableName).to.equal('Dog');
-                        expect(models.Person.tableName).to.equal('Person');
-                        reply({ ok: 'root' });
-                    }
-                });
-                server.ext('onPreStart', (_, nxt) => {
-
-                    const models = server.models();
+                    const models = request.models();
                     expect(models).to.have.length(2);
                     expect(models.Dog.tableName).to.equal('Dog');
                     expect(models.Person.tableName).to.equal('Person');
-                    nxt();
-                });
+                    return { ok: 'root' };
+                }
+            });
 
-                const plugin = (srv, opts, next) => {
+            server.ext('onPreStart', (_) => {
+
+                const models = server.models();
+                expect(models).to.have.length(2);
+                expect(models.Dog.tableName).to.equal('Dog');
+                expect(models.Person.tableName).to.equal('Person');
+
+            });
+
+            const plugin = {
+                name: 'my-plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty(TestModels.Movie);
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, reply) => {
+                        handler: (request, h) => {
 
                             const models = request.models();
                             expect(models).to.have.length(1);
                             expect(models.Movie.tableName).to.equal('Movie');
-                            reply({ ok: 'plugin' });
+                            return { ok: 'plugin' };
                         }
                     });
-                    srv.ext('onPreStart', (_, nxt) => {
+                    srv.ext('onPreStart', (_) => {
 
                         const models = srv.models();
                         expect(models).to.have.length(1);
                         expect(models.Movie.tableName).to.equal('Movie');
-                        nxt();
+
                     });
-                    next();
-                };
+                }
+            };
 
-                plugin.attributes = { name: 'my-plugin' };
+            await server.register(plugin);
+            await server.initialize();
 
-                server.register(plugin, (err) => {
+            const res1 = await server.inject('/root');
+            expect(res1.result).to.equal({ ok: 'root' });
 
-                    expect(err).to.not.exist();
+            const res2 = await server.inject('/plugin');
+            expect(res2.result).to.equal({ ok: 'plugin' });
 
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        server.inject({ url: '/root', method: 'get' }, (res1) => {
-
-                            expect(res1.result).to.equal({ ok: 'root' });
-
-                            server.inject({ url: '/plugin', method: 'get' }, (res2) => {
-
-                                expect(res2.result).to.equal({ ok: 'plugin' });
-                                done();
-                            });
-                        });
-                    });
-                });
-            });
         });
 
-        it('return empty object if no models defined in route\'s realm.', (done) => {
+        it('return empty object if no models defined in route\'s realm.', async () => {
 
-            getServer(getOptions(), (err, server) => {
-
-                expect(err).not.to.exist();
-
-                const plugin = (srv, opts, next) => {
+            const server = await getServer(getOptions());
+            const plugin = {
+                name: 'my-plugin',
+                register: (srv, opts) => {
 
                     srv.route({
                         path: '/',
                         method: 'get',
-                        handler: (request, reply) => {
+                        handler: (request, h) => {
 
                             const models = request.models();
                             expect(models).to.be.an.object();
                             expect(Object.keys(models)).to.have.length(0);
-                            reply({ ok: true });
+                            return { ok: true };
                         }
                     });
-                    srv.ext('onPreStart', (_, nxt) => {
+                    srv.ext('onPreStart', (_) => {
 
                         const models = srv.models();
                         expect(models).to.be.an.object();
                         expect(Object.keys(models)).to.have.length(0);
-                        nxt();
+
                     });
-                    next();
-                };
 
-                plugin.attributes = { name: 'my-plugin' };
+                }
+            };
 
-                server.register(plugin, (err) => {
+            await server.register(plugin);
+            await server.initialize();
 
-                    expect(err).to.not.exist();
+            const response = await server.inject('/');
+            expect(response.result).to.equal({ ok: true });
 
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        server.inject({ url: '/', method: 'get' }, (response) => {
-
-                            expect(response.result).to.equal({ ok: true });
-                            done();
-                        });
-                    });
-                });
-            });
         });
 
-        it('return models across all realms when passed true.', (done) => {
+        it('return models across all realms when passed true.', async () => {
 
-            getServer(getOptions({
+            const server = await getServer(getOptions({
                 models: [
                     TestModels.Dog,
                     TestModels.Person
                 ]
-            }), (err, server) => {
+            }));
 
-                expect(err).not.to.exist();
+            server.route({
+                path: '/root',
+                method: 'get',
+                handler: (request, h) => {
 
-                server.route({
-                    path: '/root',
-                    method: 'get',
-                    handler: (request, reply) => {
-
-                        const models = request.models(true);
-                        expect(models).to.have.length(3);
-                        expect(models.Dog.tableName).to.equal('Dog');
-                        expect(models.Person.tableName).to.equal('Person');
-                        expect(models.Zombie.tableName).to.equal('Zombie');
-                        reply({ ok: 'root' });
-                    }
-                });
-                server.ext('onPreStart', (_, nxt) => {
-
-                    const models = server.models(true);
+                    const models = request.models(true);
                     expect(models).to.have.length(3);
                     expect(models.Dog.tableName).to.equal('Dog');
                     expect(models.Person.tableName).to.equal('Person');
                     expect(models.Zombie.tableName).to.equal('Zombie');
-                    nxt();
-                });
+                    return { ok: 'root' };
+                }
+            });
+            server.ext('onPreStart', (_) => {
 
-                const plugin = (srv, opts, next) => {
+                const models = server.models(true);
+                expect(models).to.have.length(3);
+                expect(models.Dog.tableName).to.equal('Dog');
+                expect(models.Person.tableName).to.equal('Person');
+                expect(models.Zombie.tableName).to.equal('Zombie');
+
+            });
+
+            const plugin = {
+                name: 'my-plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty([TestModels.Zombie]);
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, reply) => {
+                        handler: (request, h) => {
 
                             const models = request.models(true);
                             expect(models).to.have.length(3);
                             expect(models.Dog.tableName).to.equal('Dog');
                             expect(models.Person.tableName).to.equal('Person');
                             expect(models.Zombie.tableName).to.equal('Zombie');
-                            reply({ ok: 'plugin' });
+                            return { ok: 'plugin' };
                         }
                     });
-                    srv.ext('onPreStart', (_, nxt) => {
+                    srv.ext('onPreStart', (_) => {
 
                         const models = srv.models(true);
                         expect(models).to.have.length(3);
                         expect(models.Dog.tableName).to.equal('Dog');
                         expect(models.Person.tableName).to.equal('Person');
                         expect(models.Zombie.tableName).to.equal('Zombie');
-                        nxt();
                     });
-                    next();
-                };
 
-                plugin.attributes = { name: 'my-plugin' };
+                }
+            };
 
-                server.register(plugin, (err) => {
+            await server.register(plugin);
+            await server.initialize();
 
-                    expect(err).to.not.exist();
+            const res1 = await server.inject('/root');
+            expect(res1.result).to.equal({ ok: 'root' });
 
-                    server.initialize((err) => {
+            const res2 = await server.inject('/plugin');
+            expect(res2.result).to.equal({ ok: 'plugin' });
 
-                        expect(err).to.not.exist();
-
-                        server.inject({ url: '/root', method: 'get' }, (res1) => {
-
-                            expect(res1.result).to.equal({ ok: 'root' });
-
-                            server.inject({ url: '/plugin', method: 'get' }, (res2) => {
-
-                                expect(res2.result).to.equal({ ok: 'plugin' });
-                                done();
-                            });
-                        });
-                    });
-                });
-            });
         });
     });
 
