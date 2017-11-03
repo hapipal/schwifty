@@ -656,129 +656,82 @@ describe('Schwifty', () => {
 
     describe('server initialization', () => {
 
-        it('binds knex instances to models.', (done) => {
+        it('binds knex instances to models.', async () => {
 
             const knex = makeKnex();
+            const server = await getServer({ knex, models: [TestModels.Person] });
 
-            getServer({ knex, models: [TestModels.Person] }, (err, server) => {
+            expect(server.models().Person.knex()).to.not.exist();
 
-                expect(err).to.not.exist();
+            await server.initialize();
 
-                expect(server.models().Person.knex()).to.not.exist();
+            expect(server.models().Person.knex()).to.shallow.equal(knex);
 
-                server.initialize((err) => {
-
-                    expect(err).to.not.exist();
-
-                    expect(server.models().Person.knex()).to.shallow.equal(knex);
-
-                    done();
-                });
-            });
         });
 
-        it('binds root knex instance to plugins\' models by default.', (done) => {
+        it('binds root knex instance to plugins\' models by default.', async () => {
 
             const knex = makeKnex();
+            const server = await getServer({ knex });
 
-            getServer({ knex }, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
+            const plugin = {
+                name: 'plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty(TestModels.Person);
-                    next();
-                };
+                }
+            };
 
-                plugin.attributes = { name: 'plugin' };
+            await server.register(plugin);
+            expect(server.models(true).Person.knex()).to.not.exist();
 
-                server.register(plugin, (err) => {
+            await server.initialize();
+            expect(server.models(true).Person.knex()).to.shallow.equal(knex);
 
-                    expect(err).to.not.exist();
-
-                    expect(server.models(true).Person.knex()).to.not.exist();
-
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        expect(server.models(true).Person.knex()).to.shallow.equal(knex);
-
-                        done();
-                    });
-                });
-            });
         });
 
-        it('binds plugins\' knex instance to plugins\' models over roots\'.', (done) => {
+        it('binds plugins\' knex instance to plugins\' models over roots\'.', async () => {
 
             const knex1 = makeKnex();
             const knex2 = makeKnex();
 
-            getServer({ knex: knex1 }, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
+            const server = await getServer({ knex: knex1 });
+            const plugin = {
+                name: 'plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty({ knex: knex2, models: [TestModels.Person] });
-                    next();
-                };
+                }
+            };
 
-                plugin.attributes = { name: 'plugin' };
+            await server.register(plugin);
+            expect(server.models(true).Person.knex()).to.not.exist();
 
-                server.register(plugin, (err) => {
+            await server.initialize();
+            expect(server.models(true).Person.knex()).to.shallow.equal(knex2);
 
-                    expect(err).to.not.exist();
-
-                    expect(server.models(true).Person.knex()).to.not.exist();
-
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        expect(server.models(true).Person.knex()).to.shallow.equal(knex2);
-
-                        done();
-                    });
-                });
-            });
         });
 
-        it('does not bind knex instance to models when there are no plugin or root knex instances.', (done) => {
+        it('does not bind knex instance to models when there are no plugin or root knex instances.', async () => {
 
-            getServer({}, (err, server) => {
-
-                expect(err).to.not.exist();
-
-                const plugin = (srv, opts, next) => {
+            const server = await getServer({});
+            const plugin = {
+                name: 'plugin',
+                register: (srv, opts) => {
 
                     srv.schwifty(TestModels.Person);
-                    next();
-                };
+                }
+            };
 
-                plugin.attributes = { name: 'plugin' };
+            await server.register(plugin);
+            expect(server.models(true).Person.knex()).to.not.exist();
 
-                server.register(plugin, (err) => {
+            await server.initialize();
+            expect(server.models(true).Person.knex()).to.not.exist();
 
-                    expect(err).to.not.exist();
-
-                    expect(server.models(true).Person.knex()).to.not.exist();
-
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        expect(server.models(true).Person.knex()).to.not.exist();
-
-                        done();
-                    });
-                });
-            });
         });
 
-        it('does not bind knex instance when model already has a knex instance.', (done) => {
+        it('does not bind knex instance when model already has a knex instance.', async () => {
 
             const knex1 = makeKnex();
             const knex2 = makeKnex();
@@ -786,23 +739,16 @@ describe('Schwifty', () => {
             const Person = class Person extends TestModels.Person {};
             Person.knex(knex2);
 
-            getServer({ knex: knex1, models: [Person] }, (err, server) => {
+            const server = await getServer({ knex: knex1, models: [Person] });
 
-                expect(err).to.not.exist();
+            expect(server.models().Person).to.shallow.equal(Person);
+            expect(server.models().Person.knex()).to.shallow.equal(knex2);
 
-                expect(server.models().Person).to.shallow.equal(Person);
-                expect(server.models().Person.knex()).to.shallow.equal(knex2);
+            await server.initialize();
 
-                server.initialize((err) => {
+            expect(server.models().Person).to.shallow.equal(Person);
+            expect(server.models().Person.knex()).to.shallow.equal(knex2);
 
-                    expect(err).to.not.exist();
-
-                    expect(server.models().Person).to.shallow.equal(Person);
-                    expect(server.models().Person.knex()).to.shallow.equal(knex2);
-
-                    done();
-                });
-            });
         });
 
         describe('bails when a knex instance is not pingable', () => {
@@ -810,133 +756,96 @@ describe('Schwifty', () => {
             const failKnexWith = (knex, error) => {
 
                 knex.queryBuilder = () => ({
-                    select: () => ({
-                        asCallback: (cb) => cb(error)
-                    })
+                    select: () => {
+
+                        throw error;
+                    }
                 });
 
                 return knex;
             };
 
-            it('and lists associated models in error.', (done) => {
+            it('and lists associated models in error.', async () => {
 
                 const knex = failKnexWith(makeKnex(), new Error());
-
-                getServer({ knex, models: [TestModels.Dog] }, (err, server) => {
-
-                    expect(err).to.not.exist();
-
-                    const plugin = (srv, opts, next) => {
+                const server = await getServer({ knex, models: [TestModels.Dog] });
+                const plugin = {
+                    name: 'plugin',
+                    register: (srv, opts) => {
 
                         srv.schwifty(TestModels.Person);
-                        next();
-                    };
+                    }
+                };
 
-                    plugin.attributes = { name: 'plugin' };
+                await server.register(plugin);
+                await expect(server.initialize()).to.reject(null, /^Could not connect to database using schwifty knex instance for models: "Dog", "Person"\./);
 
-                    server.register(plugin, (err) => {
-
-                        expect(err).to.not.exist();
-
-                        server.initialize((err) => {
-
-                            expect(err).to.exist();
-                            expect(err.message).to.startWith('Could not connect to database using schwifty knex instance for models: "Dog", "Person".');
-
-                            done();
-                        });
-                    });
-                });
             });
 
-            it('and doesn\'t list associated models in error when there are none.', (done) => {
+            it('and doesn\'t list associated models in error when there are none.', async () => {
 
                 const knex = failKnexWith(makeKnex(), new Error());
+                const server = await getServer({ knex });
 
-                getServer({ knex }, (err, server) => {
+                await expect(server.initialize()).to.reject(null, /^Could not connect to database using schwifty knex instance\./);
 
-                    expect(err).to.not.exist();
-
-                    server.initialize((err) => {
-
-                        expect(err).to.exist();
-                        expect(err.message).to.startWith('Could not connect to database using schwifty knex instance.');
-
-                        done();
-                    });
-                });
             });
 
-            it('and augments the original error\'s message.', (done) => {
+            it('and augments the original error\'s message.', async () => {
 
                 const error = new Error('Also this other thing went wrong.');
                 const knex = failKnexWith(makeKnex(), error);
+                const server = await getServer({ knex });
 
-                getServer({ knex }, (err, server) => {
+                try {
+                    await server.initialize();
+                }
+                catch (err) {
+                    expect(err).to.shallow.equal(error);
+                    expect(err.message).to.equal('Could not connect to database using schwifty knex instance.: Also this other thing went wrong.');
+                }
 
-                    expect(err).to.not.exist();
-
-                    server.initialize((err) => {
-
-                        expect(err).to.exist();
-                        expect(err).to.shallow.equal(error);
-                        expect(err.message).to.equal('Could not connect to database using schwifty knex instance.: Also this other thing went wrong.');
-
-                        done();
-                    });
-                });
             });
 
-            it('and adds a message to the original error if it did not already have one.', (done) => {
+            it('and adds a message to the original error if it did not already have one.', async () => {
 
                 const error = new Error();
                 const knex = failKnexWith(makeKnex(), error);
+                const server = await getServer({ knex });
 
-                getServer({ knex }, (err, server) => {
+                try {
+                    await server.initialize();
+                }
+                catch (err) {
+                    expect(err).to.shallow.equal(error);
+                    expect(err.message).to.equal('Could not connect to database using schwifty knex instance.');
+                }
 
-                    expect(err).to.not.exist();
-
-                    server.initialize((err) => {
-
-                        expect(err).to.exist();
-                        expect(err).to.shallow.equal(error);
-                        expect(err.message).to.equal('Could not connect to database using schwifty knex instance.');
-
-                        done();
-                    });
-                });
             });
 
-            it('and only requires one not be pingable to fail.', (done) => {
+            it('and only requires one not be pingable to fail.', async () => {
 
-                getServer({ knex: makeKnex() }, (err, server) => {
+                const server = await getServer({ knex: makeKnex() });
 
-                    expect(err).to.not.exist();
-
-                    const error = new Error();
-                    const knex = failKnexWith(makeKnex(), error);
-
-                    const plugin = (srv, opts, next) => {
+                const error = new Error();
+                const knex = failKnexWith(makeKnex(), error);
+                const plugin = {
+                    name: 'plugin',
+                    register: (srv, opts) => {
 
                         srv.schwifty({ knex });
-                        next();
-                    };
+                    }
+                };
 
-                    plugin.attributes = { name: 'plugin' };
+                await server.register(plugin);
 
-                    server.register(plugin, (err) => {
+                try {
+                    await server.initialize();
+                }
+                catch (err) {
+                    expect(err).to.shallow.equal(error);
+                }
 
-                        expect(err).to.not.exist();
-
-                        server.initialize((err) => {
-
-                            expect(err).to.exist();
-                            expect(err).to.shallow.equal(error);
-
-                            done();
-                        });
-                    });
-                });
             });
         });
     });
