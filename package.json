@@ -12,7 +12,7 @@
     "url": "https://github.com/BigRoomStudios/schwifty.git"
   },
   "engines": {
-    "node": ">=4.0.0"
+    "node": ">=8.x.x"
   },
   "keywords": [
     "hapi",
@@ -22,8 +22,8 @@
     "orm"
   ],
   "dependencies": {
-    "hoek": "4.x.x",
-    "joi": "10.x.x",
+    "hoek": "5.x.x",
+    "joi": "13.x.x",
     "tmp": "0.0.31",
     "toys": "1.x.x"
   },

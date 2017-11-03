@@ -1448,7 +1448,8 @@ describe('Schwifty', () => {
                                 limit: 1,
                                 value: 'xxxxx',
                                 encoding: undefined,
-                                key: 'persnicketyField'
+                                key: 'persnicketyField',
+                                label: 'persnicketyField'
                             }
                         },
                         {
@@ -1458,7 +1459,8 @@ describe('Schwifty', () => {
                                 limit: 10,
                                 value: 'xxxxx',
                                 encoding: undefined,
-                                key: 'persnicketyField'
+                                key: 'persnicketyField',
+                                label: 'persnicketyField'
                             }
                         }
                     ]
