@@ -28,7 +28,7 @@
     "toys": "1.x.x"
   },
   "peerDependencies": {
-    "hapi": ">=17",
+    "hapi": "17.x.x <18",
     "knex": ">=0.8",
     "objection": ">=0.7 <0.9"
   },
