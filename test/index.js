@@ -74,9 +74,20 @@ describe('Schwifty', () => {
 
     const modelsFile = './models/as-file.js';
 
-    const state = (server) => {
+    const state = (realm) => {
 
-        return server.realm.plugins.schwifty;
+        return realm.plugins.schwifty;
+    };
+
+    const getRootRealm = (server) => {
+
+        let realm = server.realm;
+
+        while (realm.parent) {
+            realm = realm.parent;
+        }
+
+        return realm;
     };
 
     before(() => {
@@ -349,7 +360,7 @@ describe('Schwifty', () => {
 
     describe('server.schwifty() decoration', () => {
 
-        it('aggregates models across plugins.', (done) => {
+        it('aggregates models across plugins.', async () => {
 
             const options = getOptions({
                 models: [
@@ -358,54 +369,57 @@ describe('Schwifty', () => {
                 ]
             });
 
-            getServer(options, (err, server) => {
+            const server = await getServer(options);
 
-                expect(err).to.not.exist();
-
-                const plugin1 = (srv, opts, next) => {
+            const plugin1 = {
+                name: 'plugin-one',
+                register: (srv, opts) => {
 
                     srv.schwifty({
                         models: [TestModels.Movie]
                     });
-                    next();
-                };
 
-                plugin1.attributes = { name: 'plugin-one' };
+                }
+            };
 
-                const plugin2 = (srv, opts, next) => {
+            const plugin2 = {
+                name: 'plugin-two',
+                register: (srv, opts) => {
 
                     srv.schwifty({
                         models: [TestModels.Zombie]
                     });
-                    next();
-                };
 
-                plugin2.attributes = { name: 'plugin-two' };
+                }
+            };
 
-                server.register([plugin1, plugin2], (err) => {
+            await server.register([plugin1, plugin2]);
+            await server.initialize();
+            // Grab all models across plugins by passing true here:
+            const models = server.models(true);
 
-                    expect(err).to.not.exist();
+            expect(models.Dog.tableName).to.equal('Dog');
+            expect(models.Person.tableName).to.equal('Person');
+            expect(models.Zombie.tableName).to.equal('Zombie');
+            expect(models.Movie.tableName).to.equal('Movie');
 
-                    server.initialize((err) => {
-
-                        expect(err).to.not.exist();
-
-                        // Grab all models across plugins by passing true here:
-                        const models = server.models(true);
-
-                        expect(models.Dog.tableName).to.equal('Dog');
-                        expect(models.Person.tableName).to.equal('Person');
-                        expect(models.Zombie.tableName).to.equal('Zombie');
-                        expect(models.Movie.tableName).to.equal('Movie');
-
-                        done();
-                    });
-                });
-            });
         });
 
-        it('aggregates model definitions within a plugin.', (done) => {
+        it.only('aggregates model definitions within a plugin.', (done) => {
 
+
+            const server = await getServer(getOptions({
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }));
+
+            const rootState = state(getRootRealm(server));
+            expect(Object.keys(rootState.collector.models)).to.equal(['Dog', 'Person']);
+
+
+            /////////////////////////
             getServer(getOptions({
                 models: [
                     TestModels.Dog,
