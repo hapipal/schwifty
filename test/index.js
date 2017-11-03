@@ -564,7 +564,7 @@ describe('Schwifty', () => {
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, h) => {
+                        handler: (request) => {
 
                             expect(request.knex()).to.shallow.equal(knex);
                             return { ok: true };
@@ -600,7 +600,7 @@ describe('Schwifty', () => {
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, h) => {
+                        handler: (request) => {
 
                             expect(request.knex()).to.shallow.equal(knex2);
                             return { ok: true };
@@ -631,7 +631,7 @@ describe('Schwifty', () => {
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, h) => {
+                        handler: (request) => {
 
                             expect(request.knex()).to.equal(null);
                             return { ok: true };
@@ -1092,7 +1092,7 @@ describe('Schwifty', () => {
         });
     });
 
-    describe('request.models() and server.models() decorations', () => {
+    describe.only('request.models() and server.models() decorations', () => {
 
         it('return empty object before server initialization.', async () => {
 
@@ -1101,7 +1101,7 @@ describe('Schwifty', () => {
             server.route({
                 path: '/',
                 method: 'get',
-                handler: (request, h) => {
+                handler: (request) => {
 
                     expect(request.models()).to.equal({});
                     expect(request.models(true)).to.equal({});
@@ -1124,7 +1124,7 @@ describe('Schwifty', () => {
             server.route({
                 path: '/root',
                 method: 'get',
-                handler: (request, h) => {
+                handler: (request) => {
 
                     expect(request.models()).to.equal({});
                     expect(request.models(true)).to.equal({});
@@ -1146,7 +1146,7 @@ describe('Schwifty', () => {
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, h) => {
+                        handler: (request) => {
 
                             const _knexGroupId = state(srv.realm);
                             expect(_knexGroupId).to.not.exist();
@@ -1182,7 +1182,7 @@ describe('Schwifty', () => {
             server.route({
                 path: '/root',
                 method: 'get',
-                handler: (request, h) => {
+                handler: (request) => {
 
                     const models = request.models();
                     expect(models).to.have.length(2);
@@ -1192,7 +1192,7 @@ describe('Schwifty', () => {
                 }
             });
 
-            server.ext('onPreStart', (_) => {
+            server.ext('onPreStart', () => {
 
                 const models = server.models();
                 expect(models).to.have.length(2);
@@ -1209,7 +1209,7 @@ describe('Schwifty', () => {
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, h) => {
+                        handler: (request) => {
 
                             const models = request.models();
                             expect(models).to.have.length(1);
@@ -1217,7 +1217,7 @@ describe('Schwifty', () => {
                             return { ok: 'plugin' };
                         }
                     });
-                    srv.ext('onPreStart', (_) => {
+                    srv.ext('onPreStart', () => {
 
                         const models = srv.models();
                         expect(models).to.have.length(1);
@@ -1248,7 +1248,7 @@ describe('Schwifty', () => {
                     srv.route({
                         path: '/',
                         method: 'get',
-                        handler: (request, h) => {
+                        handler: (request) => {
 
                             const models = request.models();
                             expect(models).to.be.an.object();
@@ -1256,7 +1256,7 @@ describe('Schwifty', () => {
                             return { ok: true };
                         }
                     });
-                    srv.ext('onPreStart', (_) => {
+                    srv.ext('onPreStart', () => {
 
                         const models = srv.models();
                         expect(models).to.be.an.object();
@@ -1287,7 +1287,7 @@ describe('Schwifty', () => {
             server.route({
                 path: '/root',
                 method: 'get',
-                handler: (request, h) => {
+                handler: (request) => {
 
                     const models = request.models(true);
                     expect(models).to.have.length(3);
@@ -1297,7 +1297,7 @@ describe('Schwifty', () => {
                     return { ok: 'root' };
                 }
             });
-            server.ext('onPreStart', (_) => {
+            server.ext('onPreStart', () => {
 
                 const models = server.models(true);
                 expect(models).to.have.length(3);
@@ -1315,7 +1315,7 @@ describe('Schwifty', () => {
                     srv.route({
                         path: '/plugin',
                         method: 'get',
-                        handler: (request, h) => {
+                        handler: (request) => {
 
                             const models = request.models(true);
                             expect(models).to.have.length(3);
@@ -1325,7 +1325,7 @@ describe('Schwifty', () => {
                             return { ok: 'plugin' };
                         }
                     });
-                    srv.ext('onPreStart', (_) => {
+                    srv.ext('onPreStart', () => {
 
                         const models = srv.models(true);
                         expect(models).to.have.length(3);
