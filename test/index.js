@@ -1418,8 +1418,7 @@ describe('Schwifty', () => {
 
                         return Joi.object({
                             persnicketyField: Joi.string().max(1).min(10)
-                        })
-                        .options({
+                        }).options({
                             abortEarly: false
                         });
                     }
