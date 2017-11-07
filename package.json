@@ -1,6 +1,6 @@
 {
   "name": "schwifty",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A hapi plugin integrating Objection ORM",
   "main": "lib/index.js",
   "scripts": {
@@ -24,21 +24,21 @@
   "dependencies": {
     "hoek": "5.x.x",
     "joi": "13.x.x",
-    "tmp": "0.0.31",
+    "tmp": "0.0.33",
     "toys": "1.x.x"
   },
   "peerDependencies": {
     "hapi": "17.x.x <18",
     "knex": ">=0.8",
-    "objection": ">=0.7 <0.9"
+    "objection": ">=0.7 <0.10"
   },
   "devDependencies": {
     "code": "5.x.x",
-    "coveralls": "2.x.x",
-    "hapi": "github:hapijs/hapi#v17.0.0-rc9",
-    "knex": "0.12.x",
+    "coveralls": "3.x.x",
+    "hapi": "17.x.x",
+    "knex": "0.14.x",
     "lab": "15.x.x",
-    "objection": "0.8.x",
+    "objection": "0.9.x",
     "sqlite3": "3.x.x"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",
