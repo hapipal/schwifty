@@ -23,33 +23,33 @@ const Hapi = require('hapi');
 const Joi = require('joi');
 const Schwifty = require('schwifty');
 
-const server = new Hapi.Server();
-server.connection({ port: 3000 });
+const server = Hapi.server({ port: 3000 });
 
 server.route({
     method: 'get',
     path: '/dogs/{id}',
-    handler: function (request, reply) {
+    handler: function (request) {
 
         const Dog = request.models().Dog;
 
-        reply(Dog.query().findById(request.params.id));
+        return Dog.query().findById(request.params.id);
     }
 });
 
-server.register({
-    register: Schwifty,
-    options: {
-        knex: {
-            client: 'sqlite3',
-            useNullAsDefault: true,
-            connection: {
-                filename: ':memory:'
+try {
+
+    await server.register({
+        plugin: Schwifty,
+        options: {
+            knex: {
+                client: 'sqlite3',
+                useNullAsDefault: true,
+                connection: {
+                    filename: ':memory:'
+                }
             }
         }
-    }
-})
-.then(() => {
+    });
 
     // Register a model with schwifty...
 
@@ -70,45 +70,40 @@ server.register({
         }
     );
 
-    // ... then initialize the server, connecting your models to knex...
-    return server.initialize();
-})
-.then(() => {
+    await server.initialize();
+
     // ... then make a table ...
 
     const knex = server.knex();
 
-    return knex.schema.createTable('Dog', (table) => {
+    await knex.schema.createTable('Dog', (table) => {
 
         table.increments('id').primary();
         table.string('name');
     });
-})
-.then(() => {
+
     // ... then add some records ...
 
     const Dog = server.models().Dog;
 
-    return Promise.all([
+    await Promise.all([
         Dog.query().insert({ name: 'Guinness' }),
         Dog.query().insert({ name: 'Sully' }),
         Dog.query().insert({ name: 'Ren' })
     ]);
-})
-.then(() => {
+
     // ... then start the server!
 
-    return server.start();
-})
-.then(() => {
+    await server.start();
 
     console.log(`Now, go find some dogs at ${server.info.uri}!`);
-})
-.catch((err) => {
+
+} catch (err) {
 
     console.error(err);
     process.exit(1);
-});
+}
+
 ```
 
 ## Extras
