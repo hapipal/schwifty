@@ -173,10 +173,7 @@ describe('Schwifty', () => {
 
                 srv.schwifty([TestModels.Zombie]);
 
-                // Plugin 2 will use server.root's knex connection
-                // Referencing server.knex() is a bit of a hacky though required workaround to to inspect the root server's knex() decoration, given that hapi17 removed server.root ( this test previously used srv.root.knex() )
-                // In this case, because we can be certain that server is the root server for plugin2, we can also be certain that this comparison will work. There is no guarantee such referencing will work in
-                // scenarios even slightly more complicated than this
+                // Plugin 2 will use the root server's (referenced by server variable) knex connection
                 expect(srv.knex()).to.shallow.equal(server.knex());
 
             }
