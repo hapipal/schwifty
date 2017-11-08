@@ -2,14 +2,14 @@
 
 // Load modules
 
+const Fs = require('fs');
+const Path = require('path');
+const Tmp = require('tmp');
 const Lab = require('lab');
 const Code = require('code');
 const Hapi = require('hapi');
 const Joi = require('joi');
 const Hoek = require('hoek');
-const Path = require('path');
-const Fs = require('fs');
-const Tmp = require('tmp');
 const Objection = require('objection');
 const Knex = require('knex');
 const TestModels = require('./models');
@@ -25,7 +25,7 @@ const it = lab.it;
 
 describe('Schwifty', () => {
 
-    const getOptions = (extras) => {
+    const getOptions = (extras = {}) => {
 
         const options = {
             knex: {
@@ -37,7 +37,7 @@ describe('Schwifty', () => {
             }
         };
 
-        return Hoek.applyToDefaults(options, extras || {});
+        return Hoek.applyToDefaults(options, extras);
     };
 
     const makeKnex = () => {
@@ -69,7 +69,6 @@ describe('Schwifty', () => {
         });
 
         return server;
-
     };
 
     const modelsFile = './models/as-file.js';
@@ -93,7 +92,6 @@ describe('Schwifty', () => {
     before(() => {
 
         require('sqlite3'); // Just warm-up sqlite, so that the tests have consistent timing
-
     });
 
     it('connects models to knex instance during onPreStart.', async () => {
@@ -107,14 +105,13 @@ describe('Schwifty', () => {
 
         const server = await getServer(config);
 
-        expect(server.models().Dog.$$knex).to.not.exist();
-        expect(server.models().Person.$$knex).to.not.exist();
+        expect(server.models().Dog.knex()).to.not.exist();
+        expect(server.models().Person.knex()).to.not.exist();
 
         await server.initialize();
 
-        expect(server.models().Dog.$$knex).to.exist();
-        expect(server.models().Person.$$knex).to.exist();
-
+        expect(server.models().Dog.knex()).to.exist();
+        expect(server.models().Person.knex()).to.exist();
     });
 
     it('tears-down connections onPostStop.', async () => {
@@ -122,26 +119,24 @@ describe('Schwifty', () => {
         const server = await getServer(getOptions());
         let toredown = 0;
 
-        expect(toredown).to.equal(0);
+        const origDestroy = server.knex().destroy;
+        server.knex().destroy = () => {
 
-        await server.knex().destroy();
-        ++toredown;
+            ++toredown;
+            return origDestroy();
+        };
 
+        await server.initialize();
         await server.stop();
 
         expect(toredown).to.equal(1);
-
     });
 
-
-    it('tears-down all connections onPostStop.', async () => {
+    it('tears-down multiple connections onPostStop.', async () => {
 
         const server = await getServer(getOptions());
 
         let toredown = 0;
-
-        await server.initialize();
-        expect(toredown).to.equal(0);
 
         const plugin1 = {
             name: 'plugin-one',
@@ -155,15 +150,14 @@ describe('Schwifty', () => {
                     ]
                 }));
 
-                // Monkeypatch the destroy func
-                const oldDestroy = srv.knex().destroy;
-                srv.knex().destroy = () => {
+                expect(srv.knex()).to.not.shallow.equal(server.knex());
+
+                const origDestroy = server.knex().destroy;
+                server.knex().destroy = () => {
 
                     ++toredown;
-                    // Returns a Promise, which is await'd in lib/index::internals.stop
-                    return oldDestroy();
+                    return origDestroy();
                 };
-
             }
         };
 
@@ -176,49 +170,44 @@ describe('Schwifty', () => {
                 // Plugin 2 will use the root server's (referenced by server variable) knex connection
                 expect(srv.knex()).to.shallow.equal(server.knex());
 
+                const origDestroy = server.knex().destroy;
+                server.knex().destroy = () => {
+
+                    ++toredown;
+                    return origDestroy();
+                };
             }
-        };
-
-        const oldDestroy = server.knex().destroy;
-        server.knex().destroy = () => {
-
-            ++toredown;
-            return oldDestroy();
         };
 
         await server.register([plugin1, plugin2]);
         await server.initialize();
         await server.stop();
-        // 2 pools were destroyed, plugin2 shared knex with the server root
-        expect(toredown).to.equal(2);
 
+        expect(toredown).to.equal(2);
     });
 
     it('does not tear-down connections onPostStop with option `teardownOnStop` false.', async () => {
 
         const options = getOptions({ teardownOnStop: false });
-        const server = await getServer(options);
+        const server = await getServer(getOptions(options));
         let toredown = 0;
 
-        await server.initialize();
-        expect(toredown).to.equal(0);
+        const origDestroy = server.knex().destroy;
+        server.knex().destroy = () => {
 
-        server.ext('onPreStop', (srv) => {
+            ++toredown;
+            return origDestroy();
+        };
 
-            // Monkeypatch the destroy func
-            const oldDestroy = srv.knex().destroy;
-            srv.knex().destroy = () => {
-
-                ++toredown;
-                return oldDestroy();
-            };
+        server.ext('onPreStop', () => {
 
             expect(server.knex()).to.exist();
         });
 
+        await server.initialize();
         await server.stop();
-        expect(toredown).to.equal(0);
 
+        expect(toredown).to.equal(0);
     });
 
     it('can be registered multiple times.', async () => {
@@ -243,7 +232,6 @@ describe('Schwifty', () => {
             'Movie',
             'Zombie'
         ]);
-
     });
 
     describe('plugin registration', () => {
@@ -256,7 +244,6 @@ describe('Schwifty', () => {
 
             expect(models.Dog).to.exist();
             expect(models.Person).to.exist();
-
         });
 
         it('takes `models` option as an absolute path.', async () => {
@@ -267,7 +254,6 @@ describe('Schwifty', () => {
 
             expect(models.Dog).to.exist();
             expect(models.Person).to.exist();
-
         });
 
         it('takes `models` option respecting server.path().', async () => {
@@ -284,7 +270,6 @@ describe('Schwifty', () => {
 
             expect(models.Dog).to.exist();
             expect(models.Person).to.exist();
-
         });
 
         it('takes `models` option as an array of objects.', async () => {
@@ -301,15 +286,14 @@ describe('Schwifty', () => {
 
             expect(models.Dog).to.exist();
             expect(models.Person).to.exist();
-
         });
 
         it('throws if the `models` option is not an array or string.', async () => {
 
             const options = getOptions({ models: {} });
-            // We check the message against a regex because it also contains info on the server's knex connection and models, which are impractical / impossible to match exactly via string
-            await expect(getServer(options)).to.reject(null, /^Bad plugin options passed to schwifty\./);
 
+            // We check the message against a regex because it also contains info on the server's knex connection and models, which are impractical / impossible to match exactly via string
+            await expect(getServer(options)).to.reject(/^Bad plugin options passed to schwifty\./);
         });
 
         it('throws when `teardownOnStop` is specified more than once.', async () => {
@@ -324,8 +308,7 @@ describe('Schwifty', () => {
                 }
             };
 
-            await expect(server.register(plugin)).to.reject(null, 'Schwifty\'s teardownOnStop option can only be specified once.');
-
+            await expect(server.register(plugin)).to.reject('Schwifty\'s teardownOnStop option can only be specified once.');
         });
 
         it('throws when `migrateOnStart` is specified more than once.', async () => {
@@ -339,8 +322,7 @@ describe('Schwifty', () => {
                 }
             };
 
-            await expect(server.register(plugin)).to.reject(null, 'Schwifty\'s migrateOnStart option can only be specified once.');
-
+            await expect(server.register(plugin)).to.reject('Schwifty\'s migrateOnStart option can only be specified once.');
         });
 
         it('throws when multiple knex instances passed to same server.', async () => {
@@ -350,8 +332,7 @@ describe('Schwifty', () => {
             await expect(server.register({
                 plugin: Schwifty,
                 options: { knex: Knex(basicKnexConfig) }
-            })).to.reject(null, 'A knex instance/config may be specified only once per server or plugin.');
-
+            })).to.reject('A knex instance/config may be specified only once per server or plugin.');
         });
     });
 
@@ -375,7 +356,6 @@ describe('Schwifty', () => {
                     srv.schwifty({
                         models: [TestModels.Movie]
                     });
-
                 }
             };
 
@@ -386,12 +366,12 @@ describe('Schwifty', () => {
                     srv.schwifty({
                         models: [TestModels.Zombie]
                     });
-
                 }
             };
 
             await server.register([plugin1, plugin2]);
             await server.initialize();
+
             // Grab all models across plugins by passing true here:
             const models = server.models(true);
 
@@ -399,7 +379,6 @@ describe('Schwifty', () => {
             expect(models.Person.tableName).to.equal('Person');
             expect(models.Zombie.tableName).to.equal('Zombie');
             expect(models.Movie.tableName).to.equal('Movie');
-
         });
 
         it('aggregates model definitions within a plugin.', async () => {
@@ -421,12 +400,12 @@ describe('Schwifty', () => {
                     srv.schwifty({
                         models: [TestModels.Movie]
                     });
+
                     srv.schwifty({
                         models: [TestModels.Zombie]
                     });
 
                     srv.app.myState = state(srv.realm);
-
                 }
             };
 
@@ -440,7 +419,6 @@ describe('Schwifty', () => {
                 'Movie',
                 'Zombie'
             ]);
-
         });
 
         it('accepts a single model definition.', async () => {
@@ -452,7 +430,6 @@ describe('Schwifty', () => {
                 register: (srv, opts) => {
 
                     srv.schwifty(TestModels.Zombie);
-
                 }
             };
 
@@ -460,7 +437,6 @@ describe('Schwifty', () => {
 
             const collector = state(server.realm).collector;
             expect(collector.models.Zombie).to.exist();
-
         });
 
         it('accepts `knex` as a knex instance.', async () => {
@@ -476,18 +452,18 @@ describe('Schwifty', () => {
                 register: (srv, opts) => {
 
                     srv.schwifty({ knex });
-                    expect(srv.knex()).to.shallow.equal(knex);
 
+                    expect(srv.knex()).to.shallow.equal(knex);
                 }
             };
 
             await server.register(plugin);
-
         });
 
         it('throws on invalid config.', async () => {
 
             const server = await getServer(getOptions());
+
             const plugin = {
                 name: 'my-plugin',
                 register: (srv, opts) => {
@@ -496,12 +472,10 @@ describe('Schwifty', () => {
 
                         srv.schwifty({ invalidProp: 'bad' });
                     }).to.throw(/\"invalidProp\" is not allowed/);
-
                 }
             };
 
             await server.register(plugin);
-
         });
 
         it('throws on model name collision.', async () => {
@@ -518,17 +492,16 @@ describe('Schwifty', () => {
                 register: (srv, opts) => {
 
                     srv.schwifty(TestModels.Dog);
-
                 }
             };
 
-            await expect(server.register(plugin)).to.reject(null, 'Model "Dog" has already been registered.');
-
+            await expect(server.register(plugin)).to.reject('Model "Dog" has already been registered.');
         });
 
         it('throws when multiple knex instances passed to same plugin.', async () => {
 
             const server = await getServer({});
+
             const plugin = {
                 name: 'my-plugin',
                 register: (srv, opts) => {
@@ -539,12 +512,10 @@ describe('Schwifty', () => {
 
                         srv.schwifty({ knex: Knex(basicKnexConfig) });
                     }).to.throw('A knex instance/config may be specified only once per server or plugin.');
-
                 }
             };
 
             await server.register(plugin);
-
         });
     });
 
@@ -554,6 +525,7 @@ describe('Schwifty', () => {
 
             const knex = makeKnex();
             const server = await getServer({ knex });
+
             const plugin = {
                 name: 'plugin',
                 register: (srv, opts) => {
@@ -569,25 +541,24 @@ describe('Schwifty', () => {
                     });
 
                     expect(srv.knex()).to.shallow.equal(knex);
-
                 }
             };
 
             await server.register(plugin);
+
             // Root server's knex
             expect(server.knex()).to.shallow.equal(knex);
 
             const res = await server.inject('/plugin');
             expect(res.result).to.equal({ ok: true });
-
         });
 
         it('returns plugin\'s knex instance over root server\'s.', async () => {
 
             const knex1 = makeKnex();
             const knex2 = makeKnex();
-
             const server = await getServer({ knex: knex1 });
+
             const plugin = {
                 name: 'plugin',
                 register: (srv, opts) => {
@@ -605,22 +576,22 @@ describe('Schwifty', () => {
                     });
 
                     expect(srv.knex()).to.shallow.equal(knex2);
-
                 }
             };
 
             await server.register(plugin);
+
             // Root server's knex
             expect(server.knex()).to.shallow.equal(knex1);
 
             const res = await server.inject('/plugin');
             expect(res.result).to.equal({ ok: true });
-
         });
 
         it('returns null when there are no plugin or root knex instances.', async () => {
 
             const server = await getServer({});
+
             const plugin = {
                 name: 'plugin',
                 register: (srv, opts) => {
@@ -636,7 +607,6 @@ describe('Schwifty', () => {
                     });
 
                     expect(srv.knex()).to.equal(null);
-
                 }
             };
 
@@ -647,7 +617,6 @@ describe('Schwifty', () => {
 
             const res = await server.inject('/plugin');
             expect(res.result).to.equal({ ok: true });
-
         });
     });
 
@@ -663,7 +632,6 @@ describe('Schwifty', () => {
             await server.initialize();
 
             expect(server.models().Person.knex()).to.shallow.equal(knex);
-
         });
 
         it('binds root knex instance to plugins\' models by default.', async () => {
@@ -684,15 +652,14 @@ describe('Schwifty', () => {
 
             await server.initialize();
             expect(server.models(true).Person.knex()).to.shallow.equal(knex);
-
         });
 
         it('binds plugins\' knex instance to plugins\' models over roots\'.', async () => {
 
             const knex1 = makeKnex();
             const knex2 = makeKnex();
-
             const server = await getServer({ knex: knex1 });
+
             const plugin = {
                 name: 'plugin',
                 register: (srv, opts) => {
@@ -706,12 +673,12 @@ describe('Schwifty', () => {
 
             await server.initialize();
             expect(server.models(true).Person.knex()).to.shallow.equal(knex2);
-
         });
 
         it('does not bind knex instance to models when there are no plugin or root knex instances.', async () => {
 
             const server = await getServer({});
+
             const plugin = {
                 name: 'plugin',
                 register: (srv, opts) => {
@@ -725,7 +692,6 @@ describe('Schwifty', () => {
 
             await server.initialize();
             expect(server.models(true).Person.knex()).to.not.exist();
-
         });
 
         it('does not bind knex instance when model already has a knex instance.', async () => {
@@ -745,7 +711,6 @@ describe('Schwifty', () => {
 
             expect(server.models().Person).to.shallow.equal(Person);
             expect(server.models().Person.knex()).to.shallow.equal(knex2);
-
         });
 
         describe('bails when a knex instance is not pingable', () => {
@@ -766,6 +731,7 @@ describe('Schwifty', () => {
 
                 const knex = failKnexWith(makeKnex(), new Error());
                 const server = await getServer({ knex, models: [TestModels.Dog] });
+
                 const plugin = {
                     name: 'plugin',
                     register: (srv, opts) => {
@@ -775,8 +741,7 @@ describe('Schwifty', () => {
                 };
 
                 await server.register(plugin);
-                await expect(server.initialize()).to.reject(null, /^Could not connect to database using schwifty knex instance for models: "Dog", "Person"\./);
-
+                await expect(server.initialize()).to.reject(/^Could not connect to database using schwifty knex instance for models: "Dog", "Person"\./);
             });
 
             it('and doesn\'t list associated models in error when there are none.', async () => {
@@ -784,8 +749,7 @@ describe('Schwifty', () => {
                 const knex = failKnexWith(makeKnex(), new Error());
                 const server = await getServer({ knex });
 
-                await expect(server.initialize()).to.reject(null, /^Could not connect to database using schwifty knex instance\./);
-
+                await expect(server.initialize()).to.reject(/^Could not connect to database using schwifty knex instance\./);
             });
 
             it('and augments the original error\'s message.', async () => {
@@ -794,14 +758,9 @@ describe('Schwifty', () => {
                 const knex = failKnexWith(makeKnex(), error);
                 const server = await getServer({ knex });
 
-                try {
-                    await server.initialize();
-                }
-                catch (err) {
-                    expect(err).to.shallow.equal(error);
-                    expect(err.message).to.equal('Could not connect to database using schwifty knex instance.: Also this other thing went wrong.');
-                }
-
+                const thrown = await expect(server.initialize()).to.reject();
+                expect(thrown).to.shallow.equal(error);
+                expect(thrown.message).to.equal('Could not connect to database using schwifty knex instance.: Also this other thing went wrong.');
             });
 
             it('and adds a message to the original error if it did not already have one.', async () => {
@@ -810,14 +769,9 @@ describe('Schwifty', () => {
                 const knex = failKnexWith(makeKnex(), error);
                 const server = await getServer({ knex });
 
-                try {
-                    await server.initialize();
-                }
-                catch (err) {
-                    expect(err).to.shallow.equal(error);
-                    expect(err.message).to.equal('Could not connect to database using schwifty knex instance.');
-                }
-
+                const thrown = await expect(server.initialize()).to.reject();
+                expect(thrown).to.shallow.equal(error);
+                expect(thrown.message).to.equal('Could not connect to database using schwifty knex instance.');
             });
 
             it('and only requires one not be pingable to fail.', async () => {
@@ -836,13 +790,8 @@ describe('Schwifty', () => {
 
                 await server.register(plugin);
 
-                try {
-                    await server.initialize();
-                }
-                catch (err) {
-                    expect(err).to.shallow.equal(error);
-                }
-
+                const thrown = await expect(server.initialize()).to.reject();
+                expect(thrown).to.shallow.equal(error);
             });
         });
     });
