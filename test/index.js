@@ -292,6 +292,113 @@ describe('Schwifty', () => {
         });
     });
 
+    it('throws an error if there is a naming collision between attributes and relations.', (done) => {
+
+        const Collision = class Collision extends Schwifty.Model {
+            static get tableName() {
+
+                return 'Collision';
+            }
+
+            static get joiSchema() {
+
+                return Joi.object({
+                    id: Joi.number().integer(),
+                    badName: Joi.string()
+                });
+            }
+
+            static get relationMappings() {
+
+                return {
+                    badName: {
+                        relation: Schwifty.Model.BelongsToOneRelation,
+                        modelClass: require('./models/person'),
+                        join: {
+                            from: 'Collision.badName',
+                            to: 'Person.firstName'
+                        }
+                    }
+                };
+            }
+        };
+        getServer(getOptions({
+            models: [
+                TestModels.Person,
+                Collision
+            ]
+        }), (err, server) => {
+
+            expect(err).not.to.exist();
+
+            server.initialize((err) => {
+
+                expect(err).to.exist();
+                expect(err.message).to.startWith('Model Collision attribute ');
+
+                done();
+            });
+        });
+    });
+
+    it('throws a pluralized error if there is a naming collision between multiple attributes and relations.', (done) => {
+
+        const Collision = class Collision extends Schwifty.Model {
+            static get tableName() {
+
+                return 'Collision';
+            }
+
+            static get joiSchema() {
+
+                return Joi.object({
+                    id: Joi.number().integer(),
+                    badName: Joi.string(),
+                    anotherBadName: Joi.string()
+                });
+            }
+
+            static get relationMappings() {
+
+                return {
+                    badName: {
+                        relation: Schwifty.Model.BelongsToOneRelation,
+                        modelClass: require('./models/person'),
+                        join: {
+                            from: 'Collision.badName',
+                            to: 'Person.firstName'
+                        }
+                    },
+                    anotherBadName: {
+                        relation: Schwifty.Model.BelongsToOneRelation,
+                        modelClass: require('./models/person'),
+                        join: {
+                            from: 'Collision.anotherBadName',
+                            to: 'Person.firstName'
+                        }
+                    }
+                };
+            }
+        };
+        getServer(getOptions({
+            models: [
+                TestModels.Person,
+                Collision
+            ]
+        }), (err, server) => {
+
+            expect(err).not.to.exist();
+
+            server.initialize((err) => {
+
+                expect(err).to.exist();
+                expect(err.message).to.startWith('Model Collision attributes');
+
+                done();
+            });
+        });
+    });
+
     describe('plugin registration', () => {
 
         it('takes `models` option as a relative path.', (done) => {
