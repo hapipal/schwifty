@@ -15,7 +15,7 @@ Schwifty is used to define [Joi](https://github.com/hapijs/joi)-compatible model
 // preferred versions of knex, objection, and sqlite3
 
 // To get started you might run,
-// npm install --save hapi joi schwifty knex objection sqlite3
+// npm install --save hapi@17 joi schwifty knex objection sqlite3
 
 'use strict';
 
@@ -23,20 +23,20 @@ const Hapi = require('hapi');
 const Joi = require('joi');
 const Schwifty = require('schwifty');
 
-const server = Hapi.server({ port: 3000 });
+(async () => {
 
-server.route({
-    method: 'get',
-    path: '/dogs/{id}',
-    handler: function (request) {
+    const server = Hapi.server({ port: 3000 });
 
-        const Dog = request.models().Dog;
+    server.route({
+        method: 'get',
+        path: '/dogs/{id}',
+        handler: async (request) => {
 
-        return Dog.query().findById(request.params.id);
-    }
-});
+            const { Dog } = request.models();
 
-try {
+            return await Dog.query().findById(request.params.id);
+        }
+    });
 
     await server.register({
         plugin: Schwifty,
@@ -84,7 +84,7 @@ try {
 
     // ... then add some records ...
 
-    const Dog = server.models().Dog;
+    const { Dog } = server.models();
 
     await Promise.all([
         Dog.query().insert({ name: 'Guinness' }),
@@ -97,13 +97,7 @@ try {
     await server.start();
 
     console.log(`Now, go find some dogs at ${server.info.uri}!`);
-
-} catch (err) {
-
-    console.error(err);
-    process.exit(1);
-}
-
+})();
 ```
 
 ## Extras
