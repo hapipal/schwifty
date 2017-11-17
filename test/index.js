@@ -189,7 +189,7 @@ describe('Schwifty', () => {
     it('does not tear-down connections onPostStop with option `teardownOnStop` false.', async () => {
 
         const options = getOptions({ teardownOnStop: false });
-        const server = await getServer(getOptions(options));
+        const server = await getServer(options);
         let toredown = 0;
 
         const origDestroy = server.knex().destroy;
@@ -811,7 +811,6 @@ describe('Schwifty', () => {
 
             const versionPost = await server.knex().migrate.currentVersion();
             expect(versionPost).to.equal('none');
-
         });
 
         it('does not run when `migrateOnStart` plugin/server option is `false`.', async () => {
@@ -828,7 +827,6 @@ describe('Schwifty', () => {
 
             const versionPost = await server.knex().migrate.currentVersion();
             expect(versionPost).to.equal('none');
-
         });
 
         it('migrates to latest when `migrateOnStart` plugin/server option is `true`.', async () => {
@@ -845,7 +843,6 @@ describe('Schwifty', () => {
 
             const versionPost = await server.knex().migrate.currentVersion();
             expect(versionPost).to.equal('basic.js');
-
         });
 
         it('migrates to latest when `migrateOnStart` plugin/server option is `\'latest\'`.', async () => {
@@ -862,7 +859,6 @@ describe('Schwifty', () => {
 
             const versionPost = await server.knex().migrate.currentVersion();
             expect(versionPost).to.equal('basic.js');
-
         });
 
         it('rollsback when `migrateOnStart` plugin/server option is `\'rollback\'`.', async () => {
@@ -887,7 +883,6 @@ describe('Schwifty', () => {
             await server2.initialize();
             const versionPost = await server2.knex().migrate.currentVersion();
             expect(versionPost).to.equal('none');
-
         });
 
         it('accepts absolute `migrationsDir`s.', async () => {
@@ -901,7 +896,6 @@ describe('Schwifty', () => {
 
             const version = await server.knex().migrate.currentVersion();
             expect(version).to.equal('basic.js');
-
         });
 
         it('respects server.path() when setting `migrationsDir`.', async () => {
@@ -920,37 +914,34 @@ describe('Schwifty', () => {
 
             const versionPost = await server.knex().migrate.currentVersion();
             expect(versionPost).to.equal('basic.js');
-
         });
 
         it('coalesces migrations in different directories across plugins sharing knex instances.', async () => {
 
             // Generates an object callable by server.register
-            const makePlugin = (id, knex, migrationsDir) => {
+            const makePlugin = (id, knex, migrationsDir) => ({
+                name: `plugin-${id}`,
+                register: (server, options) => {
 
-                const plugin = {
-                    name: `plugin-${id}`,
-                    register: (server, options) => {
-
-                        server.schwifty({ knex, migrationsDir });
-                    }
-                };
-
-                return plugin;
-            };
+                    server.schwifty({ knex, migrationsDir });
+                }
+            });
 
             const knex1 = makeKnex();
             const knex2 = makeKnex();
 
-            // Our root server uses the knex1 knex instance as its default (fallback if no plugin-specific instance)
+            // Our root server uses the knex1 knex instance as its default
+            // (fallback if no plugin-specific instance)
             const server = await getServer({
                 knex: knex1,
                 migrateOnStart: true
             });
 
+            // plugin3 will default to using knex1 as the plugin's knex instance,
+            // so we'll expect this directory's migration files to be listed for the knex1 instance.
+
             const plugin1 = makePlugin(1, knex1, './test/migrations/basic');
             const plugin2 = makePlugin(2, knex2, './test/migrations/basic');
-            // plugin3 will default to using knex1 as the plugin's knex instance, so we'll expect this directory's migration files to be listed for the knex1 instance
             const plugin3 = makePlugin(3, undefined, './test/migrations/extras-one');
             const plugin4 = makePlugin(4, knex2, './test/migrations/extras-two');
             const plugin5 = makePlugin(5, knex1);
@@ -972,7 +963,6 @@ describe('Schwifty', () => {
 
             expect(migrations1.map(getName)).to.equal(['basic.js', 'extras-one-1st.js', 'extras-one-2nd.js']);
             expect(migrations2.map(getName)).to.equal(['basic.js', 'extras-two-1st.js', 'extras-two-2nd.js']);
-
         });
 
         it('ignores non-migration files.', async () => {
@@ -985,9 +975,9 @@ describe('Schwifty', () => {
             await server.initialize();
 
             const version = await server.knex().migrate.currentVersion();
-            // If 2nd-bad had run, that would be the current version, due to sort order
-            expect(version).to.equal('1st-good.js');
 
+            // If 2nd-bad had run, that would be the current version due to sort order
+            expect(version).to.equal('1st-good.js');
         });
 
         it('bails when failing to make a temp migrations directory.', async () => {
@@ -1007,11 +997,10 @@ describe('Schwifty', () => {
             };
 
             // We expect server initialization to fail with the simulated Tmp error message
-            await expect(server.initialize()).to.reject(null, 'Generating temp dir failed.');
+            await expect(server.initialize()).to.reject('Generating temp dir failed.');
 
             const version = await server.knex().migrate.currentVersion();
             expect(version).to.equal('none');
-
         });
 
         it('bails when failing to read a migrations directory.', async () => {
@@ -1030,11 +1019,10 @@ describe('Schwifty', () => {
                 cb(new Error('Reading migrations dir failed.'));
             };
 
-            await expect(server.initialize()).to.reject(null, 'Reading migrations dir failed.');
+            await expect(server.initialize()).to.reject('Reading migrations dir failed.');
 
             const version = await server.knex().migrate.currentVersion();
             expect(version).to.equal('none');
-
         });
     });
 
@@ -1060,7 +1048,6 @@ describe('Schwifty', () => {
 
             const response = await server.inject('/');
             expect(response.result).to.equal({ ok: true });
-
         });
 
         it('return empty object if no models have been added.', async () => {
@@ -1101,7 +1088,6 @@ describe('Schwifty', () => {
                             return { ok: 'plugin' };
                         }
                     });
-
                 }
             };
 
@@ -1113,7 +1099,6 @@ describe('Schwifty', () => {
 
             const res2 = await server.inject('/plugin');
             expect(res2.result).to.equal({ ok: 'plugin' });
-
         });
 
         it('solely return models registered in route\'s realm by default.', async () => {
@@ -1144,12 +1129,11 @@ describe('Schwifty', () => {
                 expect(models).to.have.length(2);
                 expect(models.Dog.tableName).to.equal('Dog');
                 expect(models.Person.tableName).to.equal('Person');
-
             });
 
             const plugin = {
                 name: 'my-plugin',
-                register: (srv, opts) => {
+                register: (srv) => {
 
                     srv.schwifty(TestModels.Movie);
                     srv.route({
@@ -1168,7 +1152,6 @@ describe('Schwifty', () => {
                         const models = srv.models();
                         expect(models).to.have.length(1);
                         expect(models.Movie.tableName).to.equal('Movie');
-
                     });
                 }
             };
@@ -1181,7 +1164,6 @@ describe('Schwifty', () => {
 
             const res2 = await server.inject('/plugin');
             expect(res2.result).to.equal({ ok: 'plugin' });
-
         });
 
         it('return empty object if no models defined in route\'s realm.', async () => {
@@ -1207,9 +1189,7 @@ describe('Schwifty', () => {
                         const models = srv.models();
                         expect(models).to.be.an.object();
                         expect(Object.keys(models)).to.have.length(0);
-
                     });
-
                 }
             };
 
@@ -1218,7 +1198,6 @@ describe('Schwifty', () => {
 
             const response = await server.inject('/');
             expect(response.result).to.equal({ ok: true });
-
         });
 
         it('return models across all realms when passed true.', async () => {
@@ -1250,7 +1229,6 @@ describe('Schwifty', () => {
                 expect(models.Dog.tableName).to.equal('Dog');
                 expect(models.Person.tableName).to.equal('Person');
                 expect(models.Zombie.tableName).to.equal('Zombie');
-
             });
 
             const plugin = {
@@ -1279,7 +1257,6 @@ describe('Schwifty', () => {
                         expect(models.Person.tableName).to.equal('Person');
                         expect(models.Zombie.tableName).to.equal('Zombie');
                     });
-
                 }
             };
 
@@ -1291,7 +1268,6 @@ describe('Schwifty', () => {
 
             const res2 = await server.inject('/plugin');
             expect(res2.result).to.equal({ ok: 'plugin' });
-
         });
     });
 
@@ -1313,7 +1289,6 @@ describe('Schwifty', () => {
                     firstName: 'Chompy',
                     lastName: 'Chomperson'
                 });
-
             });
 
             it('defaults to validate itself if no json passed.', () => {
@@ -1327,7 +1302,6 @@ describe('Schwifty', () => {
                     firstName: 'Chompy',
                     favoriteFood: 'Tasty brains'
                 });
-
             });
 
             it('throws Objection.ValidationError if required schema item not provided to $validate().', () => {
@@ -1340,7 +1314,6 @@ describe('Schwifty', () => {
                         lastName: 'Chomperson'
                     });
                 }).to.throw(Objection.ValidationError, /\\\"firstName\\\" is required/);
-
             });
 
             it('throws Objection.ValidationError if bad types are passed.', () => {
@@ -1354,7 +1327,6 @@ describe('Schwifty', () => {
                         lastName: 1234
                     });
                 }).to.throw(Objection.ValidationError, /\\\"lastName\\\" must be a string/);
-
             });
 
             it('throws Objection.ValidationError with multiple errors per key.', () => {
@@ -1410,7 +1382,6 @@ describe('Schwifty', () => {
                         }
                     ]
                 });
-
             });
 
             it('can modify validation schema using model.$beforeValidate().', () => {
@@ -1444,7 +1415,6 @@ describe('Schwifty', () => {
                 expect(seenSchema).to.shallow.equal(Model.getJoiSchema());
                 expect(seenJson).to.equal(persnickety);
                 expect(seenOptions).to.equal({});
-
             });
 
             it('skips validation if model is missing joiSchema.', () => {
@@ -1457,7 +1427,6 @@ describe('Schwifty', () => {
                 };
 
                 expect(anythingGoes.$validate(whateverSchema)).to.equal(whateverSchema);
-
             });
 
             it('skips validation when `skipValidation` option is passed to $validate().', () => {
@@ -1470,7 +1439,6 @@ describe('Schwifty', () => {
                 };
 
                 expect(chompy.$validate(whateverSchema, { skipValidation: true })).to.equal(whateverSchema);
-
             });
 
             it('allows missing required properties when `patch` option is passed to $validate().', () => {
@@ -1489,7 +1457,6 @@ describe('Schwifty', () => {
                 const missingField = {};
 
                 expect(instance.$validate(missingField, { patch: true })).to.equal(missingField);
-
             });
         });
 
@@ -1499,7 +1466,6 @@ describe('Schwifty', () => {
 
                 expect(Schwifty.Model.getJoiSchema()).to.not.exist();
                 expect(Schwifty.Model.getJoiSchema(true)).to.not.exist();
-
             });
 
             it('memoizes the plain schema.', () => {
@@ -1512,7 +1478,6 @@ describe('Schwifty', () => {
                 };
 
                 expect(Model.getJoiSchema()).to.shallow.equal(Model.getJoiSchema());
-
             });
 
             it('memoizes the patch schema.', () => {
@@ -1526,7 +1491,6 @@ describe('Schwifty', () => {
 
                 expect(Model.getJoiSchema()).to.not.shallow.equal(Model.getJoiSchema(true));
                 expect(Model.getJoiSchema(true)).to.shallow.equal(Model.getJoiSchema(true));
-
             });
 
             it('forgets past memoization on extended classes.', () => {
@@ -1552,7 +1516,6 @@ describe('Schwifty', () => {
 
                 expect(keysOf(ModelTwo.getJoiSchema())).to.only.include(['a', 'b']);
                 expect(keysOf(ModelTwo.getJoiSchema(true))).to.only.include(['a', 'b']);
-
             });
         });
 
@@ -1576,13 +1539,11 @@ describe('Schwifty', () => {
 
                 expect(jsonAttributes.length).to.equal(2);
                 expect(jsonAttributes).to.contain(['arr', 'obj']);
-
             });
 
             it('returns null for a missing Joi schema.', () => {
 
                 expect(Schwifty.Model.jsonAttributes).to.equal(null);
-
             });
 
             it('returns an empty array for an empty Joi schema.', () => {
@@ -1595,7 +1556,6 @@ describe('Schwifty', () => {
                 };
 
                 expect(Model.jsonAttributes).to.equal([]);
-
             });
 
             it('is memoized.', () => {
@@ -1613,7 +1573,6 @@ describe('Schwifty', () => {
                 };
 
                 expect(Model.jsonAttributes).to.shallow.equal(Model.jsonAttributes);
-
             });
 
             it('if set, prefers set value.', () => {
@@ -1643,7 +1602,6 @@ describe('Schwifty', () => {
                 ModelTwo.jsonAttributes = false;
 
                 expect(ModelTwo.jsonAttributes).to.equal(false);
-
             });
         });
 
@@ -1670,7 +1628,6 @@ describe('Schwifty', () => {
 
                 const emptyJsonAttrs = Model.jsonAttributes = [];
                 expect(emptyJsonAttrs).to.shallow.equal(Model.$$schwiftyJsonAttributes);
-
             });
         });
     });
@@ -1686,7 +1643,6 @@ describe('Schwifty', () => {
 
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.throw(defaultErrorMsg);
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.throw(defaultErrorMsg);
-
         });
 
         it('throws if one model doesn\'t have the same name as the other.', () => {
@@ -1696,7 +1652,6 @@ describe('Schwifty', () => {
 
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.throw(defaultErrorMsg);
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.throw(defaultErrorMsg);
-
         });
 
         it('throws if one model doesn\'t have the same table as the other.', () => {
@@ -1709,7 +1664,6 @@ describe('Schwifty', () => {
 
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.throw(defaultErrorMsg);
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.throw(defaultErrorMsg);
-
         });
 
         it('throws with custom message.', () => {
@@ -1719,7 +1673,6 @@ describe('Schwifty', () => {
             const customMessage = 'Bad, very bad!';
 
             expect(() => Schwifty.assertCompatible(ModelA, ModelB, customMessage)).to.throw(customMessage);
-
         });
 
         it('no-ops when one model extends the other, they share the same name, and share the same table.', () => {
@@ -1732,7 +1685,6 @@ describe('Schwifty', () => {
 
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.not.throw();
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.not.throw();
-
         });
     });
 });
