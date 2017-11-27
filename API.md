@@ -6,8 +6,8 @@ Schwifty may be registered multiple times– it should be registered in any plug
 Schwifty takes the following registration options,
 
   - `knex` - a knex instance or [configuration](http://knexjs.org/#Installation-client).  This will determine the server-wide default knex instance; if a plugin does not declare its own knex instance using [`server.schwifty()`](#serverschwiftyconfig) then this one will be used.  It cannot be specified more than once for the root server.
-  - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the root server.  May also be a path to a module that exports such an array– either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#serverpathrelativeto) when set, or otherwise relative to the current working directory.
-  - `migrationsDir` - specifies a directory of knex migrations associated with the root server.  The directory path may be either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#serverpathrelativeto) when set, or otherwise relative to the current working directory.  It cannot be specified more than once for the root server.
+  - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the root server.  May also be a path to a module that exports such an array– either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.
+  - `migrationsDir` - specifies a directory of knex migrations associated with the root server.  The directory path may be either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.  It cannot be specified more than once for the root server.
   - `migrateOnStart` - a boolean, `'latest'`, or `'rollback'`, to determine how to handle [knex migrations](http://knexjs.org/#Migrations) at server initialization time.  Defaults to `false`, which indicates to not handle migrations at all.  When `true` or `'latest'`, runs all migrations that have not been run.  When `'rollback'`, rolls-back the latest group of migrations.
   - `teardownOnStop` - a boolean indicating whether or not all knex connections should be torn-down when the hapi server stops (after server connections are drained).  Defaults to `true`, and may only be specified once.
 
@@ -20,13 +20,13 @@ Returns the knex instance used by the current plugin. In other words, this retur
 Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned.  Otherwise, only models declared within the current plugin (or, active realm) are returned.
 
 #### `server.schwifty(config)`
-Used to register models, knex instances, and migration directory information on a per-plugin basis or on the root server.  In other words, these settings are particular to the active [realm](https://github.com/hapijs/hapi/blob/master/API.md#serverrealm).  The `config` may be either,
+Used to register models, knex instances, and migration directory information on a per-plugin basis or on the root server.  In other words, these settings are particular to the active [realm](https://github.com/hapijs/hapi/blob/master/API.md#server.realm).  The `config` may be either,
 
   - An objection or [schwifty model class](#schwiftymodel), or an array of such model classes associated with the current plugin or root server.
   - An object specifying,
     - `knex` - a knex instance or configuration.  This will determine the knex instance that should be used within the current plugin.  If it's specified on the root server, it will set the server-wide default knex instance.  It cannot be specified more than once within a plugin or on the root server, but the same knex instance may be shared by multiple plugins.
     - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the current plugin or root server.
-    - `migrationsDir` - specifies a directory of knex migrations associated with the current plugin or root server.  The directory path may be either absolute, relative to the plugin's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#serverpathrelativeto) when set, or otherwise relative to the current working directory.  It cannot be specified more than once within a plugin or on the root server.
+    - `migrationsDir` - specifies a directory of knex migrations associated with the current plugin or root server.  The directory path may be either absolute, relative to the plugin's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.  It cannot be specified more than once within a plugin or on the root server.
 
 
 ### Request decorations
@@ -64,10 +64,10 @@ The `migrateOnStart` options `true` and `'latest'` correspond to [`knex.migrate.
 Schwifty's model class extends [`Objection.Model`](http://vincit.github.io/objection.js/#model), adding support for [Joi](https://github.com/hapijs/joi) schemas wherever objection's base model class employs [`jsonSchema`](http://vincit.github.io/objection.js/#jsonschema).  This primarily plays into model instance validation and serialization of JSON/array fields.
 
 ### `joiSchema`
-An optional [`Joi.object()`](https://github.com/hapijs/joi/blob/master/API.md#object) schema, where each of its keys is a field of the given model.
+An optional [`Joi.object()`](https://github.com/hapijs/joi/blob/master/API.md#object---inherits-from-any) schema, where each of its keys is a field of the given model.
 
 ### `jsonAttributes`
-This property is computed as a getter using the contents of `joiSchema`.  Any of the schema's keys that are [`Joi.object()`](https://github.com/hapijs/joi/blob/master/API.md#object)s or [`Joi.array()`](https://github.com/hapijs/joi/blob/master/API.md#array)s will be included in the list of JSON attributes.  If this property is set, it will forget about having been computed.  For more info, see objection's [`jsonAttributes`](http://vincit.github.io/objection.js/#jsonattributes).
+This property is computed as a getter using the contents of `joiSchema`.  Any of the schema's keys that are [`Joi.object()`](https://github.com/hapijs/joi/blob/master/API.md#object---inherits-from-any)s or [`Joi.array()`](https://github.com/hapijs/joi/blob/master/API.md#array---inherits-from-any)s will be included in the list of JSON attributes.  If this property is set, it will forget about having been computed.  For more info, see objection's [`jsonAttributes`](http://vincit.github.io/objection.js/#jsonattributes).
 
 ### `getJoiSchema([patch])`
 Returns the [`joiSchema`](#joischema) and memoizes the result.  This is useful when `joiSchema` is defined as a getter, but you'd like to avoid constantly recompiling the schema when accessing it.  Past memoization is forgotten by extended classes.  When `patch` is `true`, the same schema is returned (and memoized separately), but set so that it ignores default values and missing required fields.

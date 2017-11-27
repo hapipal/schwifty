@@ -15,7 +15,7 @@ Schwifty is used to define [Joi](https://github.com/hapijs/joi)-compatible model
 // preferred versions of knex, objection, and sqlite3
 
 // To get started you might run,
-// npm install --save hapi joi schwifty knex objection sqlite3
+// npm install --save hapi@17 joi schwifty knex objection sqlite3
 
 'use strict';
 
@@ -23,33 +23,33 @@ const Hapi = require('hapi');
 const Joi = require('joi');
 const Schwifty = require('schwifty');
 
-const server = new Hapi.Server();
-server.connection({ port: 3000 });
+(async () => {
 
-server.route({
-    method: 'get',
-    path: '/dogs/{id}',
-    handler: function (request, reply) {
+    const server = Hapi.server({ port: 3000 });
 
-        const Dog = request.models().Dog;
+    server.route({
+        method: 'get',
+        path: '/dogs/{id}',
+        handler: async (request) => {
 
-        reply(Dog.query().findById(request.params.id));
-    }
-});
+            const { Dog } = request.models();
 
-server.register({
-    register: Schwifty,
-    options: {
-        knex: {
-            client: 'sqlite3',
-            useNullAsDefault: true,
-            connection: {
-                filename: ':memory:'
+            return await Dog.query().findById(request.params.id);
+        }
+    });
+
+    await server.register({
+        plugin: Schwifty,
+        options: {
+            knex: {
+                client: 'sqlite3',
+                useNullAsDefault: true,
+                connection: {
+                    filename: ':memory:'
+                }
             }
         }
-    }
-})
-.then(() => {
+    });
 
     // Register a model with schwifty...
 
@@ -70,45 +70,34 @@ server.register({
         }
     );
 
-    // ... then initialize the server, connecting your models to knex...
-    return server.initialize();
-})
-.then(() => {
+    await server.initialize();
+
     // ... then make a table ...
 
     const knex = server.knex();
 
-    return knex.schema.createTable('Dog', (table) => {
+    await knex.schema.createTable('Dog', (table) => {
 
         table.increments('id').primary();
         table.string('name');
     });
-})
-.then(() => {
+
     // ... then add some records ...
 
-    const Dog = server.models().Dog;
+    const { Dog } = server.models();
 
-    return Promise.all([
+    await Promise.all([
         Dog.query().insert({ name: 'Guinness' }),
         Dog.query().insert({ name: 'Sully' }),
         Dog.query().insert({ name: 'Ren' })
     ]);
-})
-.then(() => {
+
     // ... then start the server!
 
-    return server.start();
-})
-.then(() => {
+    await server.start();
 
     console.log(`Now, go find some dogs at ${server.info.uri}!`);
-})
-.catch((err) => {
-
-    console.error(err);
-    process.exit(1);
-});
+})();
 ```
 
 ## Extras
