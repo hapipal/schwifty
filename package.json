@@ -30,7 +30,7 @@
   "peerDependencies": {
     "hapi": ">=17 <18",
     "knex": ">=0.8",
-    "objection": ">=0.7 <0.10"
+    "objection": ">=1 <2"
   },
   "devDependencies": {
     "code": "5.x.x",
@@ -38,7 +38,7 @@
     "hapi": "17.x.x",
     "knex": "0.14.x",
     "lab": "15.x.x",
-    "objection": "0.9.x",
+    "objection": "1.x.x",
     "sqlite3": "3.x.x"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",

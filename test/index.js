@@ -1313,7 +1313,7 @@ describe('Schwifty', () => {
                     chompy.$validate({
                         lastName: 'Chomperson'
                     });
-                }).to.throw(Objection.ValidationError, /\\\"firstName\\\" is required/);
+                }).to.throw(Objection.ValidationError, /"firstName" is required/);
             });
 
             it('throws Objection.ValidationError if bad types are passed.', () => {
@@ -1326,7 +1326,7 @@ describe('Schwifty', () => {
                         firstName: 'Chompy',
                         lastName: 1234
                     });
-                }).to.throw(Objection.ValidationError, /\\\"lastName\\\" must be a string/);
+                }).to.throw(Objection.ValidationError, /"lastName" must be a string/);
             });
 
             it('throws Objection.ValidationError with multiple errors per key.', () => {
@@ -1360,8 +1360,8 @@ describe('Schwifty', () => {
                     persnicketyField: [
                         {
                             message: '"persnicketyField" length must be less than or equal to 1 characters long',
-                            keyword: 'string.max',
-                            params: {
+                            type: 'string.max',
+                            data: {
                                 limit: 1,
                                 value: 'xxxxx',
                                 encoding: undefined,
@@ -1371,8 +1371,8 @@ describe('Schwifty', () => {
                         },
                         {
                             message: '"persnicketyField" length must be at least 10 characters long',
-                            keyword: 'string.min',
-                            params: {
+                            type: 'string.min',
+                            data: {
                                 limit: 10,
                                 value: 'xxxxx',
                                 encoding: undefined,
