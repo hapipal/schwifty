@@ -1360,8 +1360,8 @@ describe('Schwifty', () => {
                     persnicketyField: [
                         {
                             message: '"persnicketyField" length must be less than or equal to 1 characters long',
-                            joiType: 'string.max',
-                            data: {
+                            keyword: 'string.max',
+                            params: {
                                 limit: 1,
                                 value: 'xxxxx',
                                 encoding: undefined,
@@ -1371,8 +1371,8 @@ describe('Schwifty', () => {
                         },
                         {
                             message: '"persnicketyField" length must be at least 10 characters long',
-                            joiType: 'string.min',
-                            data: {
+                            keyword: 'string.min',
+                            params: {
                                 limit: 10,
                                 value: 'xxxxx',
                                 encoding: undefined,
