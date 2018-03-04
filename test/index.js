@@ -391,7 +391,7 @@ describe('Schwifty', () => {
             }));
 
             const rootState = state(getRootRealm(server));
-            expect(Object.keys(rootState.collector.models)).to.equal(['Dog', 'Person']);
+            expect(Object.keys(rootState.models)).to.equal(['Dog', 'Person']);
 
             const plugin = {
                 name: 'my-plugin',
@@ -412,8 +412,8 @@ describe('Schwifty', () => {
             await server.register(plugin);
             await server.initialize();
 
-            expect(server.app.myState.knexGroup.models).to.equal(['Movie', 'Zombie']);
-            expect(Object.keys(rootState.collector.models)).to.only.contain([
+            expect(Object.keys(server.app.myState.models)).to.equal(['Movie', 'Zombie']);
+            expect(Object.keys(rootState.models)).to.only.contain([
                 'Dog',
                 'Person',
                 'Movie',
@@ -435,8 +435,7 @@ describe('Schwifty', () => {
 
             await server.register(plugin);
 
-            const collector = state(server.realm).collector;
-            expect(collector.models.Zombie).to.exist();
+            expect(state(server.realm).models.Zombie).to.exist();
         });
 
         it('accepts `knex` as a knex instance.', async () => {
@@ -796,7 +795,7 @@ describe('Schwifty', () => {
         });
     });
 
-    describe('migrations', () => {
+    describe.skip('migrations', () => {
 
         it('does not run by default.', async () => {
 
@@ -1066,7 +1065,7 @@ describe('Schwifty', () => {
 
             });
 
-            expect(state(server.realm).knexGroup.models).to.equal([]);
+            expect(state(server.realm).models).to.equal({});
 
             expect(server.models()).to.equal({});
             expect(server.models(true)).to.equal({});
@@ -1081,8 +1080,7 @@ describe('Schwifty', () => {
                         method: 'get',
                         handler: (request) => {
 
-                            const _knexGroupId = state(srv.realm);
-                            expect(_knexGroupId).to.not.exist();
+                            expect(state(srv.realm)).to.not.exist();
                             const models = request.models();
                             expect(models).to.equal({});
                             return { ok: 'plugin' };
@@ -1116,9 +1114,10 @@ describe('Schwifty', () => {
                 handler: (request) => {
 
                     const models = request.models();
-                    expect(models).to.have.length(2);
+                    expect(models).to.have.length(3);
                     expect(models.Dog.tableName).to.equal('Dog');
                     expect(models.Person.tableName).to.equal('Person');
+                    expect(models.Movie.tableName).to.equal('Movie');
                     return { ok: 'root' };
                 }
             });
@@ -1126,9 +1125,10 @@ describe('Schwifty', () => {
             server.ext('onPreStart', () => {
 
                 const models = server.models();
-                expect(models).to.have.length(2);
+                expect(models).to.have.length(3);
                 expect(models.Dog.tableName).to.equal('Dog');
                 expect(models.Person.tableName).to.equal('Person');
+                expect(models.Movie.tableName).to.equal('Movie');
             });
 
             const plugin = {

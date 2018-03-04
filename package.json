@@ -25,7 +25,7 @@
     "hoek": "5.x.x",
     "joi": "13.x.x",
     "tmp": "0.0.33",
-    "toys": "1.x.x"
+    "toys": "2.x.x"
   },
   "peerDependencies": {
     "hapi": ">=17 <18",
