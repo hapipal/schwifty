@@ -14,10 +14,11 @@ Schwifty takes the following registration options,
 
 ### Server decorations
 #### `server.knex()`
-Returns the knex instance used by the current plugin. In other words, this returns the knex instance for the active realm, falling back to the root server's server-wide default knex instance.
+Returns the knex instance used by the current plugin. In other words, this returns the knex instance for the active realm. If none exists, the first knex instance encountered on climbing up through the current plugin's ancestors until reaching the root server's knex instance is returned.
 
 #### `server.models([all])`
-Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned.  Otherwise, only models declared within a.) the current plugin (or, server's active realm) and b.) any plugins for which the current plugin is an ancestor (e.g. if the current plugin has registered a plugin that registers models) are returned.
+Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned.  Otherwise, only models declared within a.) the current plugin (or, server's active realm) and b.) all children plugins of the current plugin (e.g. if the current plugin has registered a plugin that registers models, the current plugin would have access to the models registered by its child plugin) are returned.
+
 
 #### `server.schwifty(config)`
 Used to register models, knex instances, and migration directory information on a per-plugin basis or on the root server.  In other words, these settings are particular to the active [realm](https://github.com/hapijs/hapi/blob/master/API.md#server.realm).  The `config` may be either,
@@ -32,23 +33,42 @@ Used to register models, knex instances, and migration directory information on 
 
 ### Request decorations
 #### `request.knex()`
-Returns the knex instance used by `request.route`'s plugin. In other words, this returns the knex instance for `request.route`'s active realm, falling back to the root server's server-wide default knex instance.
+Returns the knex instance used by `request.route`'s plugin. In other words, this returns the knex instance for `request.route`'s active realm. If none exists, the first knex instance encountered as you climb up through `request.route`'s ancestors until reaching the root server's knex instance is returned.
 
 #### `request.models([all])`
-Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned. Otherwise, only models declared within a.) `request.route`'s plugin (or, active realm) and b.) any plugins for which `request.route`'s plugin is an ancestor (e.g. if `request.route`'s plugin has registered a plugin that registers models) are returned.
+Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned. Otherwise, only models declared within a.) `request.route`'s plugin (or, active realm) and b.) all children plugins of the `request.route`'s plugin (e.g. if `request.route`'s plugin has registered a plugin that registers models, `request.route`'s plugin would have access to the models registered by its child plugin) are returned.
 
 ### Response toolkit decorations
 #### `h.knex()`
-Returns the knex instance used by the current route's plugin. In other words, this returns the knex instance for the active realm as identified by `h.realm`, falling back to the root server's server-wide default knex instance.
+Returns the knex instance used by the current route's plugin. In other words, this returns the knex instance for the active realm as identified by `h.realm`. If none exists, the first knex instance encountered on climbing up through the current route's plugin's ancestors until reaching the root server's knex instance is returned.
 
 #### `h.models([all])`
-Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned. Otherwise, only models declared within a.) the current route's plugin (or, active realm, as identified by `h.realm`) and b.) any plugins for which the current route's plugin is an ancestor (e.g. if the current route's plugin has registered a plugin that registers models) are returned.
+Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned. Otherwise, only models declared within a.) the current route's plugin (or, active realm, as identified by `h.realm`) and b.) all children plugins of the current route's plugin (e.g. if the current route's plugin has registered a plugin that registers models, the current route's plugin would have access to the models registered by its child plugin) are returned.
 
 ### What happens during server initialization?
 Schwifty performs a few important routines during server initialization.
 
 #### Binding models to knex
-First, each model is bound to its plugin's or active realm's knex instance (falling back to the server-wide default knex instance).  If a model already is bound to a knex instance, it will not be bound to a new one.  This means that prior to server initialization, calls to [`server.models()`](#servermodelsall) will provide models that will not be bound to a knex instance (unless you've done so manually).  If you would like to perform some tasks during server initialization that rely on database-connected models, simply tell your `onPreStart` server extension to occur after schwifty, e.g.,
+First, each model is bound to its plugin's or active realm's knex instance.  If no knex instance is bound to the active realm, then the plugin's ancestry is indeterminately searched for one, binding the first knex instance found to the plugin's models.
+
+For example, take 2 plugins: `pluginA` and `pluginB`:
+
+- `pluginA` registers `pluginB`
+- `pluginA` registers the model `Dogs` and binds a knex instance
+- `pluginB` registers the model `Zombies` and does not bind a knex instance
+
+On server initialization,
+
+- `pluginA` will have access to both `Dogs` and `Zombies` (via the `models` decorations described above), as parents have access to their own and their children's models.
+- `pluginB` will have acccess to only `Zombies`
+- All models will be bound to `pluginA`'s knex instance. `Zombies` is bound to that instance because `pluginB` attempts to bind its own knex instance to `Zombies`, but finds that none was configured, so it then searches through its ancestors. It checks its parent first, immediately finding a knex instance, so binds that.
+
+In short, models and knex instances pass through our plugin architecture as follows:
+
+- Models propagate upwards; as child plugins register their own models, their parents "know" about more models
+- Knex instances propagate downwards; a child plugin will "adopt" a knex instance from up the ancestral chain if it doesn't own one
+
+If a model already is bound to a knex instance, it will not be bound to a new one.  This means that prior to server initialization, calls to [`server.models()`](#servermodelsall) will provide models that will not be bound to a knex instance (unless you've done so manually).  If you would like to perform some tasks during server initialization that rely on database-connected models, simply tell your `onPreStart` server extension to occur after schwifty, e.g.,
 ```js
 server.ext('onPreStart', someDbConnectedTask, { after: 'schwifty' });
 ```
