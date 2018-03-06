@@ -17,7 +17,10 @@ Schwifty takes the following registration options,
 Returns the knex instance used by the current plugin. In other words, this returns the knex instance for the active realm, falling back to the root server's server-wide default knex instance.
 
 #### `server.models([all])`
-Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned.  Otherwise, only models declared within the current plugin (or, active realm) are returned.
+Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned.  Otherwise, only models declared within a.) the current plugin (or, server's active realm) and b.) any plugins for which the current plugin is an ancestor (e.g. if the current plugin has registered a plugin that registers models) are returned.
+
+
+The services that are available on this object are only those registered by server or .
 
 #### `server.schwifty(config)`
 Used to register models, knex instances, and migration directory information on a per-plugin basis or on the root server.  In other words, these settings are particular to the active [realm](https://github.com/hapijs/hapi/blob/master/API.md#server.realm).  The `config` may be either,
@@ -25,6 +28,7 @@ Used to register models, knex instances, and migration directory information on 
   - An objection or [schwifty model class](#schwiftymodel), or an array of such model classes associated with the current plugin or root server.
   - An object specifying,
     - `knex` - a knex instance or configuration.  This will determine the knex instance that should be used within the current plugin.  If it's specified on the root server, it will set the server-wide default knex instance.  It cannot be specified more than once within a plugin or on the root server, but the same knex instance may be shared by multiple plugins.
+        - For example, any plugin that doesn't have its own knex instance can use the root server's. Note the root server isn't special here, just is the top link in our plugin ancestry. If a plugin isn't bound to a knex instance, it just reaches up this ancestry until it finds one, stopping when it reaches the end of our "family tree". This end just happens to be the current root server of your application, but would change, for example, if your application became a plugin of a different server, which would become the new root server, offering a new possible knex instance if this new server also registered schwifty
     - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the current plugin or root server.
     - `migrationsDir` - specifies a directory of knex migrations associated with the current plugin or root server.  The directory path may be either absolute, relative to the plugin's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.  It cannot be specified more than once within a plugin or on the root server.
 
@@ -34,7 +38,14 @@ Used to register models, knex instances, and migration directory information on 
 Returns the knex instance used by `request.route`'s plugin. In other words, this returns the knex instance for `request.route`'s active realm, falling back to the root server's server-wide default knex instance.
 
 #### `request.models([all])`
-Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned.  Otherwise, only models declared within `request.route`'s plugin (or, active realm) are returned.
+Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned. Otherwise, only models declared within a.) `request.route`'s plugin (or, active realm) and b.) any plugins for which `request.route`'s plugin is an ancestor (e.g. if `request.route`'s plugin has registered a plugin that registers models) are returned.
+
+### Response toolkit decorations
+#### `h.knex()`
+Returns the knex instance used by the current route's plugin. In other words, this returns the knex instance for the active realm as identified by `h.realm`, falling back to the root server's server-wide default knex instance.
+
+#### `h.models([all])`
+Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned. Otherwise, only models declared within a.) the current route's plugin (or, active realm, as identified by `h.realm`) and b.) any plugins for which the current route's plugin is an ancestor (e.g. if the current route's plugin has registered a plugin that registers models) are returned.
 
 ### What happens during server initialization?
 Schwifty performs a few important routines during server initialization.
