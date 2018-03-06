@@ -14,11 +14,11 @@ Schwifty is used to define [Joi](https://github.com/hapijs/joi)-compatible model
 // First, ensure your project includes knex, objection, and sqlite3
 // Note that for knex and Objection, we assume using
 // knex >=0.8 and Objection >=1 <2 (see our peerDependencies in our package file)
-// Schwifty v4 introduced compatibility with Objection v.1
+// Schwifty v4 introduced compatibility with Objection v1
 // If you prefer / need to work with earlier versions of Objection, checkout Schwifty v3 instead!
 
 // To get started you might run,
-// npm install --save hapi@17 joi schwifty knex objection sqlite3
+// npm install --save hapi joi schwifty knex objection sqlite3
 
 'use strict';
 

@@ -19,9 +19,6 @@ Returns the knex instance used by the current plugin. In other words, this retur
 #### `server.models([all])`
 Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned.  Otherwise, only models declared within a.) the current plugin (or, server's active realm) and b.) any plugins for which the current plugin is an ancestor (e.g. if the current plugin has registered a plugin that registers models) are returned.
 
-
-The services that are available on this object are only those registered by server or .
-
 #### `server.schwifty(config)`
 Used to register models, knex instances, and migration directory information on a per-plugin basis or on the root server.  In other words, these settings are particular to the active [realm](https://github.com/hapijs/hapi/blob/master/API.md#server.realm).  The `config` may be either,
 
