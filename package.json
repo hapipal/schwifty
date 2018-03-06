@@ -38,7 +38,7 @@
     "hapi": "17.x.x",
     "knex": "0.14.x",
     "lab": "15.x.x",
-    "objection": "0.9.x",
+    "objection": "^0.9.4",
     "sqlite3": "3.x.x"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",

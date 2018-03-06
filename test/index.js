@@ -1847,12 +1847,25 @@ describe('Schwifty', () => {
                 }
             });
 
-            const ModelO = class ModelO extends Schwifty.Model {};
-            const ModelA1 = class ModelA1 extends Schwifty.Model {};
-            const ModelA1a = class ModelA1a extends Schwifty.Model {};
-            const ModelA1b = class ModelA1b extends Schwifty.Model {};
-            const ModelA2 = class ModelA2 extends Schwifty.Model {};
-            const ModelX1a = class ModelX1a extends Schwifty.Model {};
+            // Required to bind knex (during server initialization) since objection v0.9.1
+
+            const withTablename = (Model) => {
+
+                return class extends Model {
+
+                    static get tableName() {
+
+                        return 'TableName';
+                    }
+                };
+            };
+
+            const ModelO = class ModelO extends withTablename(Schwifty.Model) {};
+            const ModelA1 = class ModelA1 extends withTablename(Schwifty.Model) {};
+            const ModelA1a = class ModelA1a extends withTablename(Schwifty.Model) {};
+            const ModelA1b = class ModelA1b extends withTablename(Schwifty.Model) {};
+            const ModelA2 = class ModelA2 extends withTablename(Schwifty.Model) {};
+            const ModelX1a = class ModelX1a extends withTablename(Schwifty.Model) {};
 
             const knex1 = makeKnex();
             const knex2 = makeKnex();
