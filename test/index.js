@@ -1390,7 +1390,7 @@ describe('Schwifty', () => {
                     chompy.$validate({
                         lastName: 'Chomperson'
                     });
-                }).to.throw(Objection.ValidationError, /\\\"firstName\\\" is required/);
+                }).to.throw(Objection.ValidationError, /"firstName" is required/);
             });
 
             it('throws Objection.ValidationError if bad types are passed.', () => {
@@ -1403,7 +1403,7 @@ describe('Schwifty', () => {
                         firstName: 'Chompy',
                         lastName: 1234
                     });
-                }).to.throw(Objection.ValidationError, /\\\"lastName\\\" must be a string/);
+                }).to.throw(Objection.ValidationError, /"lastName" must be a string/);
             });
 
             it('throws Objection.ValidationError with multiple errors per key.', () => {
