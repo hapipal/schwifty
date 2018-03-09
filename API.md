@@ -1,14 +1,14 @@
 # API
 ## The hapi plugin
 ### Registration
-Schwifty may be registered multiple times– it should be registered in any plugin that would like to use any of its features.  It's suggested that registration options only be passed when schwifty is registered outside of a plugin (on the root server), and that within plugins [`server.schwifty()`](#serverschwiftyconfig) be used instead, at least for defining models.  Upon each registration these options are collected until server initialization.  Model `name`s must be unique across the entire server.  Server initialization will fail if any knex instances handled by schwifty do not have basic database connectivity.
+Schwifty may be registered multiple times—it should be registered in any plugin that would like to use any of its features.  Upon each registration these options are collected until server initialization.  Models and knex configurations passed during configuration are attributed to the registering plugin/server under schwifty's [ownership model]().  Model `name`s must be unique across the entire server.  Server initialization will fail if any knex instances handled by schwifty do not have basic database connectivity.
 
 Schwifty takes the following registration options,
 
-  - `knex` - a knex instance or [configuration](http://knexjs.org/#Installation-client).  This will determine the server-wide default knex instance; if a plugin does not declare its own knex instance using [`server.schwifty()`](#serverschwiftyconfig) then this one will be used.  It cannot be specified more than once for the root server.
-  - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the root server.  May also be a path to a module that exports such an array– either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.
-  - `migrationsDir` - specifies a directory of knex migrations associated with the root server.  The directory path may be either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.  It cannot be specified more than once for the root server.
-  - `migrateOnStart` - a boolean, `'latest'`, or `'rollback'`, to determine how to handle [knex migrations](http://knexjs.org/#Migrations) at server initialization time.  Defaults to `false`, which indicates to not handle migrations at all.  When `true` or `'latest'`, runs all migrations that have not been run.  When `'rollback'`, rolls-back the latest group of migrations.
+  - `knex` - a knex instance or [configuration](http://knexjs.org/#Installation-client).  It may only be specified once per plugin/server.
+  - `models` - An array of objection or [schwifty model classes](#schwiftymodel).  May also be a path to a module that exports such an array– either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.
+  - `migrationsDir` - specifies a directory of knex migrations.  The directory path may be either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.  It may only be specified once per plugin/server.
+  - `migrateOnStart` - a boolean, `'latest'`, or `'rollback'`, to determine how to handle [knex migrations](http://knexjs.org/#Migrations) at server initialization time.  Defaults to `false`, which indicates to not handle migrations at all.  When `true` or `'latest'`, runs all migrations that have not been run.  When `'rollback'`, rolls-back the latest group of migrations.  It may only be specified once.
   - `teardownOnStop` - a boolean indicating whether or not all knex connections should be torn-down when the hapi server stops (after server connections are drained).  Defaults to `true`, and may only be specified once.
 
 
@@ -44,6 +44,19 @@ Returns the knex instance used by the current route's plugin. In other words, th
 
 #### `h.models([all])`
 Returns an object containing models keyed by `name`.  When `all` is `true`, models across the entire server are returned. Otherwise, only models declared within a.) the current route's plugin (or, active realm, as identified by `h.realm`) and b.) all children plugins of the current route's plugin (e.g. if the current route's plugin has registered a plugin that registers models, the current route's plugin would have access to the models registered by its child plugin) are returned.
+
+### The ownership model
+> How do plugins "own" knex instances and models?
+
+Schwifty cares a whole lot about plugin boundaries.  Plugins represent the structure of your application, and we think that's not only useful but also very meaningful.  Under schwifty plugins declare knex instances and models, and actually retain _ownership_ of them in a useful way that respects your application's plugin boundaries.
+
+#### Knex instances
+Whenever a plugin or the root server configures a knex instance, either by [registering](#registration) schwifty and passing `knex` or calling [`server.schwifty({ knex })`](#serverschwiftyconfig), an instance of knex is attributed to that plugin.  Consider `plugin-x` that declares a knex instance.  It becomes available by calling `server.knex()` within `plugin-x`, or `request.knex()` within one `plugin-x`'s routes.  But it goes further!  This instance of knex is also available to all plugins _registered by_ `plugin-x` that do not have their own knex instances.
+
+This allows us to handle very common use-cases, e.g. a single knex/database is configured on the root server: all other plugins using schwifty are registered under the root server and automatically inherit that database configuration.  But it also allows us to handle complex cases, e.g. multiple applications with their own knex/databases all being deployed together as separate plugins on a single hapi server.
+
+#### Models
+
 
 ### What happens during server initialization?
 Schwifty performs a few important routines during server initialization.
