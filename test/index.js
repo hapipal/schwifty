@@ -391,7 +391,7 @@ describe('Schwifty', () => {
             }));
 
             const rootState = state(getRootRealm(server));
-            expect(Object.keys(rootState.collector.models)).to.equal(['Dog', 'Person']);
+            expect(Object.keys(rootState.models)).to.equal(['Dog', 'Person']);
 
             const plugin = {
                 name: 'my-plugin',
@@ -412,8 +412,8 @@ describe('Schwifty', () => {
             await server.register(plugin);
             await server.initialize();
 
-            expect(server.app.myState.knexGroup.models).to.equal(['Movie', 'Zombie']);
-            expect(Object.keys(rootState.collector.models)).to.only.contain([
+            expect(Object.keys(server.app.myState.models)).to.equal(['Movie', 'Zombie']);
+            expect(Object.keys(rootState.models)).to.only.contain([
                 'Dog',
                 'Person',
                 'Movie',
@@ -435,8 +435,7 @@ describe('Schwifty', () => {
 
             await server.register(plugin);
 
-            const collector = state(server.realm).collector;
-            expect(collector.models.Zombie).to.exist();
+            expect(state(server.realm).models.Zombie).to.exist();
         });
 
         it('accepts `knex` as a knex instance.', async () => {
@@ -519,7 +518,7 @@ describe('Schwifty', () => {
         });
     });
 
-    describe('request.knex() and server.knex() decorations', () => {
+    describe('request.knex(), server.knex(), and h.knex() decorations', () => {
 
         it('returns root server\'s knex instance by default.', async () => {
 
@@ -538,6 +537,12 @@ describe('Schwifty', () => {
                             expect(request.knex()).to.shallow.equal(knex);
                             return { ok: true };
                         }
+                    });
+
+                    srv.ext('onRequest', (request, h) => {
+
+                        expect(h.knex()).to.shallow.equal(knex);
+                        return h.continue;
                     });
 
                     expect(srv.knex()).to.shallow.equal(knex);
@@ -575,6 +580,12 @@ describe('Schwifty', () => {
                         }
                     });
 
+                    srv.ext('onRequest', (request, h) => {
+
+                        expect(h.knex()).to.shallow.equal(knex2);
+                        return h.continue;
+                    });
+
                     expect(srv.knex()).to.shallow.equal(knex2);
                 }
             };
@@ -604,6 +615,12 @@ describe('Schwifty', () => {
                             expect(request.knex()).to.equal(null);
                             return { ok: true };
                         }
+                    });
+
+                    srv.ext('onRequest', (request, h) => {
+
+                        expect(h.knex()).to.equal(null);
+                        return h.continue;
                     });
 
                     expect(srv.knex()).to.equal(null);
@@ -1026,7 +1043,7 @@ describe('Schwifty', () => {
         });
     });
 
-    describe('request.models() and server.models() decorations', () => {
+    describe('request.models(), server.models(), and h.models() decorations', () => {
 
         it('return empty object before server initialization.', async () => {
 
@@ -1063,15 +1080,20 @@ describe('Schwifty', () => {
                     expect(request.models(true)).to.equal({});
                     return { ok: 'root' };
                 }
-
             });
 
-            expect(state(server.realm).knexGroup.models).to.equal([]);
+            server.ext('onRequest', (request, h) => {
+
+                expect(h.models()).to.equal({});
+                expect(h.models(true)).to.equal({});
+
+                return h.continue;
+            });
 
             expect(server.models()).to.equal({});
             expect(server.models(true)).to.equal({});
 
-            // Plugin here to show that models() defaults to [] (schwifty isn't called)
+            // Plugin here to show that models() defaults to {} (schwifty isn't called)
             const plugin = {
                 name: 'my-plugin',
                 register: (srv, opts) => {
@@ -1081,12 +1103,18 @@ describe('Schwifty', () => {
                         method: 'get',
                         handler: (request) => {
 
-                            const _knexGroupId = state(srv.realm);
-                            expect(_knexGroupId).to.not.exist();
                             const models = request.models();
                             expect(models).to.equal({});
                             return { ok: 'plugin' };
                         }
+                    });
+
+                    srv.ext('onRequest', (request, h) => {
+
+                        expect(h.models()).to.equal({});
+                        expect(h.models(true)).to.equal({});
+
+                        return h.continue;
                     });
                 }
             };
@@ -1116,9 +1144,10 @@ describe('Schwifty', () => {
                 handler: (request) => {
 
                     const models = request.models();
-                    expect(models).to.have.length(2);
+                    expect(models).to.have.length(3);
                     expect(models.Dog.tableName).to.equal('Dog');
                     expect(models.Person.tableName).to.equal('Person');
+                    expect(models.Movie.tableName).to.equal('Movie');
                     return { ok: 'root' };
                 }
             });
@@ -1126,9 +1155,21 @@ describe('Schwifty', () => {
             server.ext('onPreStart', () => {
 
                 const models = server.models();
-                expect(models).to.have.length(2);
+                expect(models).to.have.length(3);
                 expect(models.Dog.tableName).to.equal('Dog');
                 expect(models.Person.tableName).to.equal('Person');
+                expect(models.Movie.tableName).to.equal('Movie');
+            });
+
+            server.ext('onRequest', (request, h) => {
+
+                const models = h.models();
+                expect(models).to.have.length(3);
+                expect(models.Dog.tableName).to.equal('Dog');
+                expect(models.Person.tableName).to.equal('Person');
+                expect(models.Movie.tableName).to.equal('Movie');
+
+                return h.continue;
             });
 
             const plugin = {
@@ -1152,6 +1193,14 @@ describe('Schwifty', () => {
                         const models = srv.models();
                         expect(models).to.have.length(1);
                         expect(models.Movie.tableName).to.equal('Movie');
+                    });
+                    srv.ext('onRequest', (request, h) => {
+
+                        const models = h.models();
+                        expect(models).to.have.length(1);
+                        expect(models.Movie.tableName).to.equal('Movie');
+
+                        return h.continue;
                     });
                 }
             };
@@ -1189,6 +1238,14 @@ describe('Schwifty', () => {
                         const models = srv.models();
                         expect(models).to.be.an.object();
                         expect(Object.keys(models)).to.have.length(0);
+                    });
+                    srv.ext('onRequest', (request, h) => {
+
+                        const models = h.models();
+                        expect(models).to.be.an.object();
+                        expect(Object.keys(models)).to.have.length(0);
+
+                        return h.continue;
                     });
                 }
             };
@@ -1230,6 +1287,16 @@ describe('Schwifty', () => {
                 expect(models.Person.tableName).to.equal('Person');
                 expect(models.Zombie.tableName).to.equal('Zombie');
             });
+            server.ext('onRequest', (request, h) => {
+
+                const models = h.models(true);
+                expect(models).to.have.length(3);
+                expect(models.Dog.tableName).to.equal('Dog');
+                expect(models.Person.tableName).to.equal('Person');
+                expect(models.Zombie.tableName).to.equal('Zombie');
+
+                return h.continue;
+            });
 
             const plugin = {
                 name: 'my-plugin',
@@ -1256,6 +1323,16 @@ describe('Schwifty', () => {
                         expect(models.Dog.tableName).to.equal('Dog');
                         expect(models.Person.tableName).to.equal('Person');
                         expect(models.Zombie.tableName).to.equal('Zombie');
+                    });
+                    srv.ext('onRequest', (request, h) => {
+
+                        const models = h.models(true);
+                        expect(models).to.have.length(3);
+                        expect(models.Dog.tableName).to.equal('Dog');
+                        expect(models.Person.tableName).to.equal('Person');
+                        expect(models.Zombie.tableName).to.equal('Zombie');
+
+                        return h.continue;
                     });
                 }
             };
@@ -1313,7 +1390,7 @@ describe('Schwifty', () => {
                     chompy.$validate({
                         lastName: 'Chomperson'
                     });
-                }).to.throw(Objection.ValidationError, /\\\"firstName\\\" is required/);
+                }).to.throw(Objection.ValidationError, /"firstName" is required/);
             });
 
             it('throws Objection.ValidationError if bad types are passed.', () => {
@@ -1326,7 +1403,7 @@ describe('Schwifty', () => {
                         firstName: 'Chompy',
                         lastName: 1234
                     });
-                }).to.throw(Objection.ValidationError, /\\\"lastName\\\" must be a string/);
+                }).to.throw(Objection.ValidationError, /"lastName" must be a string/);
             });
 
             it('throws Objection.ValidationError with multiple errors per key.', () => {
@@ -1685,6 +1762,159 @@ describe('Schwifty', () => {
 
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.not.throw();
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.not.throw();
+        });
+    });
+
+    describe('ownership', () => {
+
+        it('of models applies to server\'s realm and its ancestors.', async () => {
+
+            const makePlugin = (name, models, plugins) => ({
+                name,
+                async register(srv, options) {
+
+                    await srv.register(plugins);
+                    srv.schwifty(models);
+                    srv.expose('models', () => srv.models());
+                }
+            });
+
+            const ModelO = class ModelO extends Schwifty.Model {};
+            const ModelA1 = class ModelA1 extends Schwifty.Model {};
+            const ModelA1a = class ModelA1a extends Schwifty.Model {};
+            const ModelA1b = class ModelA1b extends Schwifty.Model {};
+            const ModelA2 = class ModelA2 extends Schwifty.Model {};
+            const ModelX1a = class ModelX1a extends Schwifty.Model {};
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            const pluginX1a = makePlugin('pluginX1a', [], []);
+            const pluginX1 = makePlugin('pluginX1', [ModelX1a], [pluginX1a]);
+            const pluginX = makePlugin('pluginX', [], [pluginX1]);
+            const pluginA1 = makePlugin('pluginA1', [ModelA1a, ModelA1b], []);
+            const pluginA = makePlugin('pluginA', [ModelA1, ModelA2], [pluginA1, pluginX]);
+
+            server.schwifty(ModelO);
+
+            await server.register(pluginA);
+
+            const {
+                pluginX1a: X1a,
+                pluginX1: X1,
+                pluginX: X,
+                pluginA1: A1,
+                pluginA: A
+            } = server.plugins;
+
+            expect(X1a.models()).to.equal({});
+            expect(X1.models()).to.only.contain([
+                'ModelX1a'
+            ]);
+            expect(X.models()).to.only.contain([
+                'ModelX1a'
+            ]);
+            expect(A1.models()).to.only.contain([
+                'ModelA1a',
+                'ModelA1b'
+            ]);
+            expect(A.models()).to.only.contain([
+                'ModelA1',
+                'ModelA1a',
+                'ModelA1b',
+                'ModelA2',
+                'ModelX1a'
+            ]);
+            expect(server.models()).to.only.contain([
+                'ModelO',
+                'ModelA1',
+                'ModelA1a',
+                'ModelA1b',
+                'ModelA2',
+                'ModelX1a'
+            ]);
+        });
+
+        it('of knex applies to server\'s realm and its children.', async () => {
+
+            const makePlugin = (name, models, knex, plugins) => ({
+                name,
+                async register(srv, options) {
+
+                    await srv.register(plugins);
+                    srv.schwifty({ models, knex });
+                    srv.expose('knex', () => srv.knex());
+                }
+            });
+
+            // Required to bind knex (during server initialization) since objection v0.9.1
+
+            const withTablename = (Model) => {
+
+                return class extends Model {
+
+                    static get tableName() {
+
+                        return 'TableName';
+                    }
+                };
+            };
+
+            const ModelO = class ModelO extends withTablename(Schwifty.Model) {};
+            const ModelA1 = class ModelA1 extends withTablename(Schwifty.Model) {};
+            const ModelA1a = class ModelA1a extends withTablename(Schwifty.Model) {};
+            const ModelA1b = class ModelA1b extends withTablename(Schwifty.Model) {};
+            const ModelA2 = class ModelA2 extends withTablename(Schwifty.Model) {};
+            const ModelX1a = class ModelX1a extends withTablename(Schwifty.Model) {};
+
+            const knex1 = makeKnex();
+            const knex2 = makeKnex();
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            const pluginX1a = makePlugin('pluginX1a', [], undefined, []);
+            const pluginX1 = makePlugin('pluginX1', [ModelX1a], undefined, [pluginX1a]);
+            const pluginX = makePlugin('pluginX', [], knex1, [pluginX1]);
+            const pluginA1 = makePlugin('pluginA1', [ModelA1a, ModelA1b], undefined, []);
+            const pluginA = makePlugin('pluginA', [ModelA1, ModelA2], knex2, [pluginA1, pluginX]);
+
+            server.schwifty(ModelO);
+
+            await server.register(pluginA);
+
+            const {
+                pluginX1a: X1a,
+                pluginX1: X1,
+                pluginX: X,
+                pluginA1: A1,
+                pluginA: A
+            } = server.plugins;
+
+            expect(X1a.knex()).to.shallow.equal(knex1);
+            expect(X1.knex()).to.shallow.equal(knex1);
+            expect(X.knex()).to.shallow.equal(knex1);
+            expect(A1.knex()).to.shallow.equal(knex2);
+            expect(A.knex()).to.shallow.equal(knex2);
+            expect(server.knex()).to.equal(null);
+
+            await server.initialize();
+
+            const {
+                ModelO: BoundModelO,
+                ModelA1: BoundModelA1,
+                ModelA1a: BoundModelA1a,
+                ModelA1b: BoundModelA1b,
+                ModelA2: BoundModelA2,
+                ModelX1a: BoundModelX1a
+            } = server.models();
+
+            expect(BoundModelO.knex()).to.not.exist();
+            expect(BoundModelA1.knex()).to.shallow.equal(knex2);
+            expect(BoundModelA1a.knex()).to.shallow.equal(knex2);
+            expect(BoundModelA1b.knex()).to.shallow.equal(knex2);
+            expect(BoundModelA2.knex()).to.shallow.equal(knex2);
+            expect(BoundModelX1a.knex()).to.shallow.equal(knex1);
         });
     });
 });
