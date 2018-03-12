@@ -234,6 +234,25 @@ describe('Schwifty', () => {
         ]);
     });
 
+    it('correctly registers hpal command', async () => {
+
+        const server = await getServer(getOptions({
+            migrationsDir: './test/migrations/generated',
+            models: [
+                TestModels.Dog,
+                TestModels.Person
+            ]
+        }));
+
+        expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrations).to.exist();
+
+        await server.initialize();
+
+        server.plugins.schwifty.commands.migrations(server, []);
+
+        await server.stop();
+    });
+
     describe('plugin registration', () => {
 
         it('takes `models` option as a relative path.', async () => {
