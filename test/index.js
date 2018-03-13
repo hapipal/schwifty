@@ -248,7 +248,7 @@ describe('Schwifty', () => {
 
         await server.initialize();
 
-        server.plugins.schwifty.commands.migrations(server, []);
+        await server.plugins.schwifty.commands.migrations(server, []);
 
         await server.stop();
     });
