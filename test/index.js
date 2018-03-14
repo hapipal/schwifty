@@ -234,23 +234,122 @@ describe('Schwifty', () => {
         ]);
     });
 
-    it('correctly registers hpal command', async () => {
+    describe('hpal command', () => {
 
-        const server = await getServer(getOptions({
-            migrationsDir: './test/migrations/generated',
-            models: [
-                TestModels.Dog,
-                TestModels.Person
-            ]
-        }));
+        it('correctly registers', async () => {
 
-        expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrations).to.exist();
+            console._log = console.log;
+            const logOutput = [];
 
-        await server.initialize();
+            console.log = (...args) => {
 
-        await server.plugins.schwifty.commands.migrations(server, []);
+                logOutput.push(...args);
+            };
 
-        await server.stop();
+            const migrationsDir = './test/migrations/generated';
+
+            // Remove migration file from any previous test run
+            Fs.readdirSync(migrationsDir)
+                .forEach((migrationFile) => {
+
+                    const filePath = Path.join(migrationsDir, migrationFile);
+
+                    if (filePath.includes('gitkeep')) {
+                        return;
+                    }
+
+                    Fs.unlinkSync(filePath);
+                });
+
+            const server = await getServer(getOptions({
+                migrationsDir,
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }));
+
+            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrations).to.exist();
+
+            await server.initialize();
+            await server.plugins.schwifty.commands.migrations(server, []);
+            await server.stop();
+
+            expect(logOutput[0].includes('//////////////')).to.equal(true);
+            expect(logOutput[1].includes('Success!')).to.equal(true);
+            expect(logOutput[2].includes('Generated new migration file:')).to.equal(true);
+
+            // Let's ensure the migration looks correct
+            const expectedMigrationContents = Fs.readFileSync(Path.join(migrationsDir, '../expected-generated-migration.js')).toString('utf8');
+
+            // Grab the latest migration
+            const migrationPathFiles = Fs.readdirSync(migrationsDir);
+            const latestMigration = migrationPathFiles[migrationPathFiles.length - 1];
+            const latestMigrationPath = Path.resolve(migrationsDir, latestMigration);
+            const latestMigrationContents = Fs.readFileSync(latestMigrationPath).toString('utf8');
+
+            expect(latestMigrationContents).to.equal(expectedMigrationContents);
+
+            console.log = console._log;
+        });
+
+        it('by default uses migrationsDir from Schwifty options but accepts a different one in args', async () => {
+
+            console._log = console.log;
+            const logOutput = [];
+
+            console.log = (...args) => {
+
+                logOutput.push(...args);
+            };
+
+            const migrationsDir = './test/migrations/generated';
+            const altMigrationsDir = './test/migrations/generated2';
+
+            // Remove migration file from any previous test run
+            Fs.readdirSync(altMigrationsDir)
+                .forEach((migrationFile) => {
+
+                    const filePath = Path.join(altMigrationsDir, migrationFile);
+
+                    if (filePath.includes('gitkeep')) {
+                        return;
+                    }
+
+                    Fs.unlinkSync(filePath);
+                });
+
+            const server = await getServer(getOptions({
+                migrationsDir,
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }));
+
+            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrations).to.exist();
+
+            await server.initialize();
+            await server.plugins.schwifty.commands.migrations(server, ['alter', 'alt-migration', altMigrationsDir]);
+            await server.stop();
+
+            expect(logOutput[0].includes('//////////////')).to.equal(true);
+            expect(logOutput[1].includes('Success!')).to.equal(true);
+            expect(logOutput[2].includes('Generated new migration file:')).to.equal(true);
+
+            // Let's ensure the migration looks correct
+            const expectedMigrationContents = Fs.readFileSync(Path.join(altMigrationsDir, '../expected-generated-migration.js')).toString('utf8');
+
+            // Grab the latest migration
+            const migrationPathFiles = Fs.readdirSync(altMigrationsDir);
+            const latestMigration = migrationPathFiles[migrationPathFiles.length - 1];
+            const latestMigrationPath = Path.resolve(altMigrationsDir, latestMigration);
+            const latestMigrationContents = Fs.readFileSync(latestMigrationPath).toString('utf8');
+
+            expect(latestMigrationContents).to.equal(expectedMigrationContents);
+
+            console.log = console._log;
+        });
     });
 
     describe('plugin registration', () => {

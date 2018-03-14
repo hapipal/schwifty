@@ -2,3 +2,10 @@ node_modules/*
 .tmp/
 npm-debug*
 package-lock.json
+.DS_Store
+
+test/migrations/generated/*
+!test/migrations/generated/.gitkeep
+
+test/migrations/generated2/*
+!test/migrations/generated2/.gitkeep
