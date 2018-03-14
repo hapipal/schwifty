@@ -236,10 +236,15 @@ describe('Schwifty', () => {
 
     describe('hpal command', () => {
 
-        it('correctly registers', async () => {
+        it('correctly registers', async (flags) => {
 
-            console._log = console.log;
+            const log = console.log;
             const logOutput = [];
+
+            flags.onCleanup = () => {
+
+                console.log = log;
+            };
 
             console.log = (...args) => {
 
@@ -289,14 +294,17 @@ describe('Schwifty', () => {
             const latestMigrationContents = Fs.readFileSync(latestMigrationPath).toString('utf8');
 
             expect(latestMigrationContents).to.equal(expectedMigrationContents);
-
-            console.log = console._log;
         });
 
-        it('by default uses migrationsDir from Schwifty options but accepts a different one in args', async () => {
+        it('by default uses migrationsDir from Schwifty options but accepts a different one in args', async (flags) => {
 
-            console._log = console.log;
+            const log = console.log;
             const logOutput = [];
+
+            flags.onCleanup = () => {
+
+                console.log = log;
+            };
 
             console.log = (...args) => {
 
@@ -347,8 +355,6 @@ describe('Schwifty', () => {
             const latestMigrationContents = Fs.readFileSync(latestMigrationPath).toString('utf8');
 
             expect(latestMigrationContents).to.equal(expectedMigrationContents);
-
-            console.log = console._log;
         });
     });
 
