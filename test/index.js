@@ -236,20 +236,7 @@ describe('Schwifty', () => {
 
     describe('hpal command', () => {
 
-        it('correctly registers', async (flags) => {
-
-            const log = console.log;
-            const logOutput = [];
-
-            flags.onCleanup = () => {
-
-                console.log = log;
-            };
-
-            console.log = (...args) => {
-
-                logOutput.push(...args);
-            };
+        it('correctly registers', async () => {
 
             const migrationsDir = './test/migrations/generated';
 
@@ -277,12 +264,10 @@ describe('Schwifty', () => {
             expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrations).to.exist();
 
             await server.initialize();
-            await server.plugins.schwifty.commands.migrations(server, []);
+            const output = await server.plugins.schwifty.commands.migrations(server, []);
             await server.stop();
 
-            expect(logOutput[0].includes('//////////////')).to.equal(true);
-            expect(logOutput[1].includes('Success!')).to.equal(true);
-            expect(logOutput[2].includes('Generated new migration file:')).to.equal(true);
+            expect(output.includes('_schwifty-migration.js')).to.equal(true);
 
             // Let's ensure the migration looks correct
             const expectedMigrationContents = Fs.readFileSync(Path.join(migrationsDir, '../expected-generated-migration.js')).toString('utf8');
@@ -297,19 +282,6 @@ describe('Schwifty', () => {
         });
 
         it('by default uses migrationsDir from Schwifty options but accepts a different one in args', async (flags) => {
-
-            const log = console.log;
-            const logOutput = [];
-
-            flags.onCleanup = () => {
-
-                console.log = log;
-            };
-
-            console.log = (...args) => {
-
-                logOutput.push(...args);
-            };
 
             const migrationsDir = './test/migrations/generated';
             const altMigrationsDir = './test/migrations/generated2';
@@ -338,12 +310,10 @@ describe('Schwifty', () => {
             expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrations).to.exist();
 
             await server.initialize();
-            await server.plugins.schwifty.commands.migrations(server, ['alter', 'alt-migration', altMigrationsDir]);
+            const output = await server.plugins.schwifty.commands.migrations(server, ['alter', 'alt-migration', altMigrationsDir]);
             await server.stop();
 
-            expect(logOutput[0].includes('//////////////')).to.equal(true);
-            expect(logOutput[1].includes('Success!')).to.equal(true);
-            expect(logOutput[2].includes('Generated new migration file:')).to.equal(true);
+            expect(output.includes('_alt-migration.js')).to.equal(true);
 
             // Let's ensure the migration looks correct
             const expectedMigrationContents = Fs.readFileSync(Path.join(altMigrationsDir, '../expected-generated-migration.js')).toString('utf8');

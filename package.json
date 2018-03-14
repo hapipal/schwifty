@@ -24,7 +24,7 @@
   "dependencies": {
     "hoek": "5.x.x",
     "joi": "13.x.x",
-    "schwifty-migration": "0.0.1",
+    "schwifty-migration": "0.0.3",
     "tmp": "0.0.33",
     "toys": "2.x.x"
   },
