@@ -30,7 +30,8 @@
   "peerDependencies": {
     "hapi": ">=17 <18",
     "knex": ">=0.8",
-    "objection": ">=1 <2"
+    "objection": ">=1 <2",
+    "schwifty-migration": "0.0.1"
   },
   "devDependencies": {
     "code": "5.x.x",
