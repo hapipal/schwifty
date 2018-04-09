@@ -24,6 +24,24 @@ const describe = lab.describe;
 const before = lab.before;
 const it = lab.it;
 
+const internals = {};
+
+internals.cleanDir = (dir) => {
+
+    // Remove migration file from any previous test run
+    Fs.readdirSync(dir)
+        .forEach((file) => {
+
+            const filePath = Path.join(dir, file);
+
+            if (filePath.includes('gitkeep')) {
+                return;
+            }
+
+            Fs.unlinkSync(filePath);
+        });
+};
+
 describe('Schwifty', () => {
 
     const getOptions = (extras = {}) => {
@@ -237,6 +255,15 @@ describe('Schwifty', () => {
 
     describe('hpal schwifty-migration command', () => {
 
+        before(() => {
+
+            const migrationsDir = './test/migrations/generated/migrations';
+            internals.cleanDir(migrationsDir);
+
+            const migrationsDir2 = './test/migrations/generated2/migrations';
+            internals.cleanDir(migrationsDir2);
+        });
+
         const compareOutput = (output, expectedOutput) => {
 
             if (output.code !== expectedOutput.code) {
@@ -256,22 +283,12 @@ describe('Schwifty', () => {
             return true;
         };
 
-        it('correctly registers', async () => {
+        it('correctly registers', async (flags) => {
 
-            const migrationsDir = './test/migrations/generated';
+            const rootDir = './test/migrations/generated';
+            const migrationsDir = rootDir + '/migrations';
 
-            // Remove migration file from any previous test run
-            Fs.readdirSync(migrationsDir)
-                .forEach((migrationFile) => {
-
-                    const filePath = Path.join(migrationsDir, migrationFile);
-
-                    if (filePath.includes('gitkeep')) {
-                        return;
-                    }
-
-                    Fs.unlinkSync(filePath);
-                });
+            flags.onCleanup = internals.cleanDir.bind(null, migrationsDir);
 
             const server = await getServer(getOptions({
                 migrationsDir,
@@ -284,7 +301,7 @@ describe('Schwifty', () => {
             expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrate).to.exist();
 
             await server.initialize();
-            const output = await server.plugins.schwifty.commands.migrate(server, []);
+            const output = await server.plugins.schwifty.commands.migrate(server, [], rootDir);
             await server.stop();
 
             expect(compareOutput(output, {
@@ -294,7 +311,7 @@ describe('Schwifty', () => {
             })).to.equal(true);
 
             // Let's ensure the migration looks correct
-            const expectedMigrationContents = Fs.readFileSync(Path.join(migrationsDir, '../expected-generated-migration.js')).toString('utf8');
+            const expectedMigrationContents = Fs.readFileSync(Path.join(migrationsDir, '../../expected-generated-migration.js')).toString('utf8');
 
             // Grab the latest migration
             const migrationPathFiles = Fs.readdirSync(migrationsDir);
@@ -305,23 +322,19 @@ describe('Schwifty', () => {
             expect(latestMigrationContents).to.equal(expectedMigrationContents);
         });
 
-        it('by default uses migrationsDir from Schwifty options but accepts a different one in args', async (flags) => {
+        it('accepts a migrationsDir in args', async (flags) => {
 
-            const migrationsDir = './test/migrations/generated';
-            const altMigrationsDir = './test/migrations/generated2';
+            const rootDir = './test/migrations/generated';
+            const migrationsDir = rootDir + '/migrations';
 
-            // Remove migration file from any previous test run
-            Fs.readdirSync(altMigrationsDir)
-                .forEach((migrationFile) => {
+            const altRootDir = './test/migrations/generated2';
+            const altMigrationsDir = altRootDir + '/migrations';
 
-                    const filePath = Path.join(altMigrationsDir, migrationFile);
+            flags.onCleanup = () => {
 
-                    if (filePath.includes('gitkeep')) {
-                        return;
-                    }
-
-                    Fs.unlinkSync(filePath);
-                });
+                internals.cleanDir(migrationsDir);
+                internals.cleanDir(altMigrationsDir);
+            };
 
             const server = await getServer(getOptions({
                 migrationsDir,
@@ -334,7 +347,7 @@ describe('Schwifty', () => {
             expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrate).to.exist();
 
             await server.initialize();
-            const output = await server.plugins.schwifty.commands.migrate(server, ['alter', 'alt-migration', altMigrationsDir]);
+            const output = await server.plugins.schwifty.commands.migrate(server, ['alter', 'alt-migration', altMigrationsDir], altRootDir);
             await server.stop();
 
             expect(compareOutput(output, {
@@ -346,7 +359,7 @@ describe('Schwifty', () => {
             expect(output.file.includes('_alt-migration.js')).to.equal(true);
 
             // Let's ensure the migration looks correct
-            const expectedMigrationContents = Fs.readFileSync(Path.join(altMigrationsDir, '../expected-generated-migration.js')).toString('utf8');
+            const expectedMigrationContents = Fs.readFileSync(Path.join(altMigrationsDir, '../../expected-generated-migration.js')).toString('utf8');
 
             // Grab the latest migration
             const migrationPathFiles = Fs.readdirSync(altMigrationsDir);
