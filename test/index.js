@@ -14,6 +14,7 @@ const Objection = require('objection');
 const Knex = require('knex');
 const TestModels = require('./models');
 const Schwifty = require('..');
+const SchwiftyMigration = require('schwifty-migration');
 
 // Test shortcuts
 
@@ -234,7 +235,26 @@ describe('Schwifty', () => {
         ]);
     });
 
-    describe('hpal command', () => {
+    describe('hpal schwifty-migration command', () => {
+
+        const compareOutput = (output, expectedOutput) => {
+
+            if (output.code !== expectedOutput.code) {
+                return false;
+            }
+
+            if (String(output.skippedCols) !== String(expectedOutput.skippedCols)) {
+                return false;
+            }
+
+            // Just check if this is truthy or not -- we don't know the timestamp
+            // Knex is going to assign to the filename
+            if (Boolean(output.file) !== Boolean(expectedOutput.file)) {
+                return false;
+            }
+
+            return true;
+        };
 
         it('correctly registers', async () => {
 
@@ -267,7 +287,11 @@ describe('Schwifty', () => {
             const output = await server.plugins.schwifty.commands.migrations(server, []);
             await server.stop();
 
-            expect(output.includes('_schwifty-migration.js')).to.equal(true);
+            expect(compareOutput(output, {
+                code: SchwiftyMigration.returnCodes.MIGRATION,
+                file: 'truthy',
+                skippedColumns: []
+            })).to.equal(true);
 
             // Let's ensure the migration looks correct
             const expectedMigrationContents = Fs.readFileSync(Path.join(migrationsDir, '../expected-generated-migration.js')).toString('utf8');
@@ -313,7 +337,13 @@ describe('Schwifty', () => {
             const output = await server.plugins.schwifty.commands.migrations(server, ['alter', 'alt-migration', altMigrationsDir]);
             await server.stop();
 
-            expect(output.includes('_alt-migration.js')).to.equal(true);
+            expect(compareOutput(output, {
+                code: SchwiftyMigration.returnCodes.MIGRATION,
+                file: 'truthy',
+                skippedColumns: []
+            })).to.equal(true);
+
+            expect(output.file.includes('_alt-migration.js')).to.equal(true);
 
             // Let's ensure the migration looks correct
             const expectedMigrationContents = Fs.readFileSync(Path.join(altMigrationsDir, '../expected-generated-migration.js')).toString('utf8');
