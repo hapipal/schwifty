@@ -281,10 +281,10 @@ describe('Schwifty', () => {
                 ]
             }));
 
-            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrations).to.exist();
+            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrate).to.exist();
 
             await server.initialize();
-            const output = await server.plugins.schwifty.commands.migrations(server, []);
+            const output = await server.plugins.schwifty.commands.migrate(server, []);
             await server.stop();
 
             expect(compareOutput(output, {
@@ -331,10 +331,10 @@ describe('Schwifty', () => {
                 ]
             }));
 
-            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrations).to.exist();
+            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrate).to.exist();
 
             await server.initialize();
-            const output = await server.plugins.schwifty.commands.migrations(server, ['alter', 'alt-migration', altMigrationsDir]);
+            const output = await server.plugins.schwifty.commands.migrate(server, ['alter', 'alt-migration', altMigrationsDir]);
             await server.stop();
 
             expect(compareOutput(output, {
