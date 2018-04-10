@@ -9,8 +9,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/BigRoomStudios/schwifty.git"
+    "url": "https://github.com/hapipal/schwifty.git"
   },
+  "bugs": {
+    "url": "https://github.com/hapipal/schwifty/issues"
+  },
+  "homepage": "https://github.com/hapipal/schwifty#readme",
   "engines": {
     "node": ">=8.x.x"
   },

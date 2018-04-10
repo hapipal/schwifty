@@ -60,7 +60,7 @@ Whenever a plugin or the root server declares some models, either by [registerin
 
 This allows us to handle very common use-cases, e.g. a plugin simply wants to declare and use some models.  But it also allows us to handle complex cases, e.g. authoring a plugin that declares some models that you would like to reuse across multiple applications.
 
-Note that the [schmervice](https://github.com/devinivy/schmervice) plugin deals with plugin ownership of services in exactly the same way.
+Note that the [schmervice](https://github.com/hapipal/schmervice) plugin deals with plugin ownership of services in exactly the same way.
 
 > As an escape hatch, you can always call [`server.models(true)`](#servermodelsall) (passing `true` to any of the server, request, or response toolkit's `models()` decoration) to break the plugin boundary and access any model declared by any plugin on the entire server.
 
