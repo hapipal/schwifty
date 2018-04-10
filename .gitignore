@@ -4,8 +4,8 @@ npm-debug*
 package-lock.json
 .DS_Store
 
-test/migrations/generated/*
-!test/migrations/generated/.gitkeep
+test/migrations/generated/migrations/*
+!test/migrations/generated/migrations/.gitkeep
 
-test/migrations/generated2/*
-!test/migrations/generated2/.gitkeep
+test/migrations/generated2/migrations/*
+!test/migrations/generated2/migrations/.gitkeep

@@ -257,10 +257,12 @@ describe('Schwifty', () => {
 
         before(() => {
 
-            const migrationsDir = './test/migrations/generated/migrations';
+            const rootDir = './test/migrations/generated/root';
+            const migrationsDir = rootDir + '/migrations';
             internals.cleanDir(migrationsDir);
 
-            const migrationsDir2 = './test/migrations/generated2/migrations';
+            const rootDir2 = './test/migrations/generated2/root';
+            const migrationsDir2 = rootDir2 + '/migrations';
             internals.cleanDir(migrationsDir2);
         });
 
@@ -285,7 +287,7 @@ describe('Schwifty', () => {
 
         it('correctly registers', async (flags) => {
 
-            const rootDir = './test/migrations/generated';
+            const rootDir = './test/migrations/generated/root';
             const migrationsDir = rootDir + '/migrations';
 
             flags.onCleanup = internals.cleanDir.bind(null, migrationsDir);
@@ -311,7 +313,7 @@ describe('Schwifty', () => {
             })).to.equal(true);
 
             // Let's ensure the migration looks correct
-            const expectedMigrationContents = Fs.readFileSync(Path.join(migrationsDir, '../../expected-generated-migration.js')).toString('utf8');
+            const expectedMigrationContents = Fs.readFileSync(Path.join(migrationsDir, '../../../expected-generated-migration.js')).toString('utf8');
 
             // Grab the latest migration
             const migrationPathFiles = Fs.readdirSync(migrationsDir);
@@ -324,10 +326,10 @@ describe('Schwifty', () => {
 
         it('accepts a migrationsDir in args', async (flags) => {
 
-            const rootDir = './test/migrations/generated';
+            const rootDir = './test/migrations/generated/root';
             const migrationsDir = rootDir + '/migrations';
 
-            const altRootDir = './test/migrations/generated2';
+            const altRootDir = './test/migrations/generated2/root';
             const altMigrationsDir = altRootDir + '/migrations';
 
             flags.onCleanup = () => {
@@ -359,7 +361,7 @@ describe('Schwifty', () => {
             expect(output.file.includes('_alt-migration.js')).to.equal(true);
 
             // Let's ensure the migration looks correct
-            const expectedMigrationContents = Fs.readFileSync(Path.join(altMigrationsDir, '../../expected-generated-migration.js')).toString('utf8');
+            const expectedMigrationContents = Fs.readFileSync(Path.join(altMigrationsDir, '../../../expected-generated-migration.js')).toString('utf8');
 
             // Grab the latest migration
             const migrationPathFiles = Fs.readdirSync(altMigrationsDir);
@@ -368,6 +370,72 @@ describe('Schwifty', () => {
             const latestMigrationContents = Fs.readFileSync(latestMigrationPath).toString('utf8');
 
             expect(latestMigrationContents).to.equal(expectedMigrationContents);
+        });
+
+        it('errors on more than 1 migrationsDir', async (flags) => {
+
+            const rootDir = './test/migrations/generated-bad/root';
+            const migrationsDir = rootDir + '/migrations';
+
+            flags.onCleanup = internals.cleanDir.bind(null, migrationsDir);
+
+            const server = await getServer(getOptions({
+                migrationsDir,
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }));
+
+            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrate).to.exist();
+
+            await server.initialize();
+
+            let error;
+
+            try {
+                await server.plugins.schwifty.commands.migrate(server, [], rootDir);
+            }
+            catch (err) {
+                error = err;
+            }
+
+            expect(error).to.exist();
+            expect(error.message).to.equal('Only 1 "migrations" directory supported at this time. Please remove one of test/migrations/generated-bad/root/migrations,test/migrations/generated-bad/root/some/folder/two/migrations');
+
+            await server.stop();
+        });
+
+        it('errors when something goes awry reading directories', async (flags) => {
+
+            const rootDir = './test/migrations/generated-bad/root/bad/bad';
+            const migrationsDir = rootDir + '/migrations';
+
+            const server = await getServer(getOptions({
+                migrationsDir,
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }));
+
+            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrate).to.exist();
+
+            await server.initialize();
+
+            let error;
+
+            try {
+                await server.plugins.schwifty.commands.migrate(server, [], rootDir);
+            }
+            catch (err) {
+                error = err;
+            }
+
+            expect(error).to.exist();
+            expect(error.message).to.equal('ENOENT: no such file or directory, scandir \'./test/migrations/generated-bad/root/bad/bad\'');
+
+            await server.stop();
         });
     });
 
