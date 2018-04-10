@@ -408,7 +408,7 @@ describe('Schwifty', () => {
 
         it('errors when something goes awry reading directories', async (flags) => {
 
-            const rootDir = './test/migrations/generated-bad/root/bad/bad';
+            const rootDir = './bad/bad';
             const migrationsDir = rootDir + '/migrations';
 
             const server = await getServer(getOptions({
@@ -433,7 +433,7 @@ describe('Schwifty', () => {
             }
 
             expect(error).to.exist();
-            expect(error.message).to.equal('ENOENT: no such file or directory, scandir \'./test/migrations/generated-bad/root/bad/bad\'');
+            expect(error.message).to.equal('ENOENT: no such file or directory, scandir \'./bad/bad\'');
 
             await server.stop();
         });
