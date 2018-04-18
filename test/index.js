@@ -257,16 +257,14 @@ describe('Schwifty', () => {
 
         before(() => {
 
-            const rootDir = './test/migrations/generated/root';
-            const migrationsDir = rootDir + '/migrations';
+            const migrationsDir = './test/migrations/generated/root/migrations';
             internals.cleanDir(migrationsDir);
 
-            const rootDir2 = './test/migrations/generated2/root';
-            const migrationsDir2 = rootDir2 + '/migrations';
+            const migrationsDir2 = './test/migrations/generated2/root/migrations';
             internals.cleanDir(migrationsDir2);
         });
 
-        const compareOutput = (output, expectedOutput) => {
+        const validateOutput = (output, expectedOutput) => {
 
             if (output.code !== expectedOutput.code) {
                 return false;
@@ -306,7 +304,7 @@ describe('Schwifty', () => {
             const output = await server.plugins.schwifty.commands.migrate(server, [], rootDir);
             await server.stop();
 
-            expect(compareOutput(output, {
+            expect(validateOutput(output, {
                 code: SchwiftyMigration.returnCodes.MIGRATION,
                 file: 'truthy',
                 skippedColumns: []
@@ -352,7 +350,7 @@ describe('Schwifty', () => {
             const output = await server.plugins.schwifty.commands.migrate(server, ['alter', 'alt-migration', altMigrationsDir], altRootDir);
             await server.stop();
 
-            expect(compareOutput(output, {
+            expect(validateOutput(output, {
                 code: SchwiftyMigration.returnCodes.MIGRATION,
                 file: 'truthy',
                 skippedColumns: []
