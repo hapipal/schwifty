@@ -14,7 +14,7 @@ const Objection = require('objection');
 const Knex = require('knex');
 const TestModels = require('./models');
 const Schwifty = require('..');
-const SchwiftyMigration = require('schwifty-migration');
+const SchwiftyMigrateDiff = require('schwifty-migrate-diff');
 
 // Test shortcuts
 
@@ -253,7 +253,7 @@ describe('Schwifty', () => {
         ]);
     });
 
-    describe('hpal schwifty-migration command', () => {
+    describe('hpal schwifty-migrate-diff command', () => {
 
         before(() => {
 
@@ -285,7 +285,7 @@ describe('Schwifty', () => {
 
         it('correctly registers', async (flags) => {
 
-            const rootDir = './test/migrations/generated/root';
+            const rootDir = Path.join(__dirname, './migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
 
             flags.onCleanup = internals.cleanDir.bind(null, migrationsDir);
@@ -298,14 +298,14 @@ describe('Schwifty', () => {
                 ]
             }));
 
-            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrate).to.exist();
+            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands['migrate:diff']).to.exist();
 
             await server.initialize();
-            const output = await server.plugins.schwifty.commands.migrate(server, [], rootDir);
+            const output = await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir);
             await server.stop();
 
             expect(validateOutput(output, {
-                code: SchwiftyMigration.returnCodes.MIGRATION,
+                code: SchwiftyMigrateDiff.returnCodes.MIGRATION,
                 file: 'truthy',
                 skippedColumns: []
             })).to.equal(true);
@@ -327,8 +327,7 @@ describe('Schwifty', () => {
             const rootDir = './test/migrations/generated/root';
             const migrationsDir = rootDir + '/migrations';
 
-            const altRootDir = './test/migrations/generated2/root';
-            const altMigrationsDir = altRootDir + '/migrations';
+            const altMigrationsDir = './test/migrations/generated2/root/migrations';
 
             flags.onCleanup = () => {
 
@@ -344,14 +343,30 @@ describe('Schwifty', () => {
                 ]
             }));
 
-            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrate).to.exist();
+            const plugin = {
+                name: 'my-plugin',
+                register: async (srv, opts) => {
+
+                    await srv.register({
+                        plugin: Schwifty,
+                        options: getOptions({
+                            migrationsDir: altMigrationsDir,
+                            models: []
+                        })
+                    });
+                }
+            };
+
+            await server.register(plugin);
+
+            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands['migrate:diff']).to.exist();
 
             await server.initialize();
-            const output = await server.plugins.schwifty.commands.migrate(server, ['alter', 'alt-migration', altMigrationsDir], altRootDir);
+            const output = await server.plugins.schwifty.commands['migrate:diff'](server, ['alter', 'alt-migration', altMigrationsDir], rootDir);
             await server.stop();
 
             expect(validateOutput(output, {
-                code: SchwiftyMigration.returnCodes.MIGRATION,
+                code: SchwiftyMigrateDiff.returnCodes.MIGRATION,
                 file: 'truthy',
                 skippedColumns: []
             })).to.equal(true);
@@ -370,10 +385,11 @@ describe('Schwifty', () => {
             expect(latestMigrationContents).to.equal(expectedMigrationContents);
         });
 
-        it('errors on more than 1 migrationsDir', async (flags) => {
+        it('errors on more than 1 migrationsDir in root', async (flags) => {
 
-            const rootDir = './test/migrations/generated-bad/root';
-            const migrationsDir = rootDir + '/migrations';
+            const rootDir = './test/migrations';
+            const migrationsDir = './test/migrations/generated/root/migrations';
+            const altMigrationsDir = './test/migrations/generated2/root/migrations';
 
             flags.onCleanup = internals.cleanDir.bind(null, migrationsDir);
 
@@ -385,53 +401,37 @@ describe('Schwifty', () => {
                 ]
             }));
 
-            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrate).to.exist();
+            const plugin = {
+                name: 'my-plugin',
+                register: async (srv, opts) => {
+
+                    await srv.register({
+                        plugin: Schwifty,
+                        options: getOptions({
+                            migrationsDir: altMigrationsDir,
+                            models: []
+                        })
+                    });
+                }
+            };
+
+            await server.register(plugin);
+
+            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands['migrate:diff']).to.exist();
 
             await server.initialize();
 
             let error;
 
             try {
-                await server.plugins.schwifty.commands.migrate(server, [], rootDir);
+                await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir);
             }
             catch (err) {
                 error = err;
             }
 
             expect(error).to.exist();
-            expect(error.message).to.equal('Only 1 "migrations" directory supported at this time. Please remove one of test/migrations/generated-bad/root/migrations,test/migrations/generated-bad/root/some/folder/two/migrations');
-
-            await server.stop();
-        });
-
-        it('errors when something goes awry reading directories', async (flags) => {
-
-            const rootDir = './bad/bad';
-            const migrationsDir = rootDir + '/migrations';
-
-            const server = await getServer(getOptions({
-                migrationsDir,
-                models: [
-                    TestModels.Dog,
-                    TestModels.Person
-                ]
-            }));
-
-            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands.migrate).to.exist();
-
-            await server.initialize();
-
-            let error;
-
-            try {
-                await server.plugins.schwifty.commands.migrate(server, [], rootDir);
-            }
-            catch (err) {
-                error = err;
-            }
-
-            expect(error).to.exist();
-            expect(error.message).to.equal('ENOENT: no such file or directory, scandir \'./bad/bad\'');
+            expect(error.message).to.equal('Only 1 migrations directory supported per project at this time. Please remove one of [/Users/williamwoodruff/Developer/schwifty/test/migrations/generated/root/migrations,/Users/williamwoodruff/Developer/schwifty/test/migrations/generated2/root/migrations]');
 
             await server.stop();
         });
