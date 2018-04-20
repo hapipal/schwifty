@@ -43,6 +43,7 @@
     "knex": "0.14.x",
     "lab": "15.x.x",
     "objection": "1.x.x",
+    "schwifty-migrate-diff": "git+https://git@github.com/bigroomstudios/schwifty-migrate-diff.git",
     "sqlite3": "3.x.x"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",
