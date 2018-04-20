@@ -14,7 +14,7 @@ const Objection = require('objection');
 const Knex = require('knex');
 const TestModels = require('./models');
 const Schwifty = require('..');
-const SchwiftyMigrateDiff = require('schwifty-migrate-diff');
+const SchwiftyMigrateDiff = require('../lib/schwifty-migrate-diff').get();
 
 // Test shortcuts
 
@@ -322,7 +322,7 @@ describe('Schwifty', () => {
             expect(latestMigrationContents).to.equal(expectedMigrationContents);
         });
 
-        it('accepts a migrationsDir in args', async (flags) => {
+        it('accepts a migrationsDir in args that lives outside the root', async (flags) => {
 
             const rootDir = './test/migrations/generated/root';
             const migrationsDir = rootDir + '/migrations';
@@ -358,8 +358,6 @@ describe('Schwifty', () => {
             };
 
             await server.register(plugin);
-
-            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands['migrate:diff']).to.exist();
 
             await server.initialize();
             const output = await server.plugins.schwifty.commands['migrate:diff'](server, ['alter', 'alt-migration', altMigrationsDir], rootDir);
@@ -416,9 +414,6 @@ describe('Schwifty', () => {
             };
 
             await server.register(plugin);
-
-            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands['migrate:diff']).to.exist();
-
             await server.initialize();
 
             let error;
@@ -431,9 +426,58 @@ describe('Schwifty', () => {
             }
 
             expect(error).to.exist();
-            expect(error.message).to.equal('Only 1 migrations directory supported per project at this time. Please remove one of [/Users/williamwoodruff/Developer/schwifty/test/migrations/generated/root/migrations,/Users/williamwoodruff/Developer/schwifty/test/migrations/generated2/root/migrations]');
+            expect(error.message).to.equal(`Only 1 migrations directory supported per project at this time. Please remove one of [${Path.join(__dirname, 'migrations/generated/root/migrations')},${Path.join(__dirname, 'migrations/generated2/root/migrations')}]`);
 
             await server.stop();
+        });
+
+        it('asks the user to install schwifty-migrate-diff if not already installed', async (flags) => {
+
+            const originalGet = require('../lib/schwifty-migrate-diff').get;
+            require('../lib/schwifty-migrate-diff').get = () => null;
+
+            flags.onCleanup = () => {
+
+                require('../lib/schwifty-migrate-diff').get = originalGet;
+            };
+
+            const rootDir = Path.join(__dirname, './migrations/generated/root');
+            const migrationsDir = rootDir + '/migrations';
+
+            const server = await getServer(getOptions({
+                migrationsDir,
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }));
+
+            // Mock the hpal ctx object
+            const ctx = {
+                DisplayError: Error
+            };
+
+            let errHappened = false;
+
+            await server.initialize();
+            try {
+                await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir, ctx);
+            }
+            catch (err) {
+                errHappened = true;
+                expect(err.message).to.equal('To use this command please first install `npm install --save-dev schwifty-migrate-diff`');
+            }
+
+            expect(errHappened).to.equal(true);
+            await server.stop();
+        });
+    });
+
+    describe('schwifty-migrate-diff require helper', () => {
+
+        it('returns null if schwifty-migrate-diff is not found', (flags) => {
+
+            expect(require('../lib/schwifty-migrate-diff').get('../bogus/path')).to.equal(null);
         });
     });
 
