@@ -42,6 +42,11 @@ internals.cleanDir = (dir) => {
         });
 };
 
+// Mock the hpal ctx object
+internals.hpalCtx = {
+    DisplayError: Error
+};
+
 describe('Schwifty', () => {
 
     const getOptions = (extras = {}) => {
@@ -266,6 +271,10 @@ describe('Schwifty', () => {
 
         const validateOutput = (output, expectedOutput) => {
 
+            if (!output) {
+                return false;
+            }
+
             if (output.code !== expectedOutput.code) {
                 return false;
             }
@@ -285,7 +294,7 @@ describe('Schwifty', () => {
 
         it('correctly registers', async (flags) => {
 
-            const rootDir = Path.join(__dirname, './migrations/generated/root');
+            const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
 
             flags.onCleanup = internals.cleanDir.bind(null, migrationsDir);
@@ -301,7 +310,8 @@ describe('Schwifty', () => {
             expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands['migrate:diff']).to.exist();
 
             await server.initialize();
-            const output = await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir);
+
+            const output = await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir, internals.hpalCtx);
             await server.stop();
 
             expect(validateOutput(output, {
@@ -324,7 +334,7 @@ describe('Schwifty', () => {
 
         it('accepts a migrationsDir in args that lives outside the root', async (flags) => {
 
-            const rootDir = './test/migrations/generated/root';
+            const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
 
             const altMigrationsDir = './test/migrations/generated2/root/migrations';
@@ -360,7 +370,8 @@ describe('Schwifty', () => {
             await server.register(plugin);
 
             await server.initialize();
-            const output = await server.plugins.schwifty.commands['migrate:diff'](server, ['alter', 'alt-migration', altMigrationsDir], rootDir);
+
+            const output = await server.plugins.schwifty.commands['migrate:diff'](server, ['alter', 'alt-migration', altMigrationsDir], rootDir, internals.hpalCtx);
             await server.stop();
 
             expect(validateOutput(output, {
@@ -383,9 +394,40 @@ describe('Schwifty', () => {
             expect(latestMigrationContents).to.equal(expectedMigrationContents);
         });
 
+        it('errors if no migrationsDirs are found in root', async (flags) => {
+
+            const rootDir = Path.join(__dirname, 'migrations/generated/root');
+            const migrationsDir = rootDir + '/migrations';
+
+            flags.onCleanup = internals.cleanDir.bind(null, migrationsDir);
+
+            const server = await getServer(getOptions({
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }));
+
+            await server.initialize();
+
+            let error;
+
+            try {
+                await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir, internals.hpalCtx);
+            }
+            catch (err) {
+                error = err;
+            }
+
+            expect(error).to.exist();
+            expect(error.message).to.equal(`At least 1 migrations directory must be present inside ${rootDir}`);
+
+            await server.stop();
+        });
+
         it('errors on more than 1 migrationsDir in root', async (flags) => {
 
-            const rootDir = './test/migrations';
+            const rootDir = Path.join(__dirname, 'migrations');
             const migrationsDir = './test/migrations/generated/root/migrations';
             const altMigrationsDir = './test/migrations/generated2/root/migrations';
 
@@ -419,7 +461,7 @@ describe('Schwifty', () => {
             let error;
 
             try {
-                await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir);
+                await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir, internals.hpalCtx);
             }
             catch (err) {
                 error = err;
@@ -434,6 +476,7 @@ describe('Schwifty', () => {
         it('asks the user to install schwifty-migrate-diff if not already installed', async (flags) => {
 
             const originalGet = require('../lib/schwifty-migrate-diff').get;
+
             require('../lib/schwifty-migrate-diff').get = () => null;
 
             flags.onCleanup = () => {
@@ -441,7 +484,7 @@ describe('Schwifty', () => {
                 require('../lib/schwifty-migrate-diff').get = originalGet;
             };
 
-            const rootDir = Path.join(__dirname, './migrations/generated/root');
+            const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
 
             const server = await getServer(getOptions({
@@ -452,16 +495,11 @@ describe('Schwifty', () => {
                 ]
             }));
 
-            // Mock the hpal ctx object
-            const ctx = {
-                DisplayError: Error
-            };
-
             let errHappened = false;
 
             await server.initialize();
             try {
-                await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir, ctx);
+                await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir, internals.hpalCtx);
             }
             catch (err) {
                 errHappened = true;
