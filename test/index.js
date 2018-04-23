@@ -517,6 +517,16 @@ describe('Schwifty', () => {
 
             expect(require('../lib/schwifty-migrate-diff').get('../bogus/path')).to.equal(null);
         });
+
+        it('throws if trying to require schwifty-migrate-diff throws an error unrelated to requiring the module', (flags) => {
+
+            try {
+                require('../lib/schwifty-migrate-diff').get(true); // Passing a boolean as the path to require
+            }
+            catch (err) {
+                expect(err.message).to.equal('path must be a string');
+            }
+        });
     });
 
     describe('plugin registration', () => {
