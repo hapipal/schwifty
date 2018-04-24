@@ -9,12 +9,9 @@ exports.up = (knex, Promise) => {
             table.float('name');
             table.integer('ownerId');
         })
-        .createTable('Person', (table) => {
+        .alterTable('Person', (table) => {
 
-            table.string('firstName');
-            table.float('lastName');
-            table.integer('age');
-            table.json('address');
+            table.string('hometown');
         });
 };
 
@@ -22,5 +19,8 @@ exports.down = (knex, Promise) => {
 
     return knex.schema
         .dropTable('Dog')
-        .dropTable('Person');
+        .alterTable('Person', (table) => {
+
+            table.dropColumn('hometown');
+        });
 };

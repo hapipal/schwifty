@@ -37,6 +37,7 @@
     "objection": ">=1 <2"
   },
   "devDependencies": {
+    "bossy": "^4.0.1",
     "code": "5.x.x",
     "coveralls": "3.x.x",
     "hapi": "17.x.x",

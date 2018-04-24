@@ -3,16 +3,11 @@
 exports.up = (knex, Promise) => {
 
     return knex.schema
-        .createTable('Dog', (table) => {
-
-            table.string('favoriteToy');
-            table.float('name');
-            table.integer('ownerId');
-        })
         .createTable('Person', (table) => {
 
+            table.integer('id');
             table.string('firstName');
-            table.float('lastName');
+            table.string('lastName');
             table.integer('age');
             table.json('address');
         });
@@ -21,6 +16,5 @@ exports.up = (knex, Promise) => {
 exports.down = (knex, Promise) => {
 
     return knex.schema
-        .dropTable('Dog')
         .dropTable('Person');
 };
