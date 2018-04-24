@@ -2333,6 +2333,7 @@ internals.checkMigrationMatches = (expectedMigrationPath, migrationsDir) => {
     const latestMigration = migrationPathFiles[migrationPathFiles.length - 1];
     const latestMigrationPath = Path.resolve(migrationsDir, latestMigration);
     const latestMigrationContents = Fs.readFileSync(latestMigrationPath).toString('utf8');
+
     // See if they match
     return latestMigrationContents === expectedMigrationContents;
 };
