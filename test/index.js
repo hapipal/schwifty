@@ -2,21 +2,23 @@
 
 // Load modules
 
-const Fs = require('fs');
 const Path = require('path');
+const Fs = require('fs');
+const Os = require('os');
 
-const Tmp = require('tmp');
 const Lab = require('lab');
 const Code = require('code');
 const Hapi = require('hapi');
 const Joi = require('joi');
 const Hoek = require('hoek');
-const Objection = require('objection');
+const Bossy = require('bossy');
+
 const Knex = require('knex');
+const Objection = require('objection');
+const Tmp = require('tmp');
 const TestModels = require('./models');
 const Schwifty = require('..');
 const SchwiftyMigrateDiff = require('../lib/schwifty-migrate-diff').get();
-const Bossy = require('bossy');
 
 // Test shortcuts
 
@@ -46,16 +48,15 @@ internals.cleanDir = (dir) => {
 
 // Mock the hpal ctx object
 internals.hpalCtx = {
-    DisplayError: Error,
-    Bossy
+    DisplayError: Error
 };
 
 internals.bossyDefinition = {
     mode: {
-        description: 'Set mode to "create" or "alter" (defaults to "alter")'
+        description: 'Set mode to "create" or "alter" (defaults to "alter") -- when set to create the migration file ignores changes that will delete or mutate existing columns/tables'
     },
     dir: {
-        description: 'Set migrationsDir'
+        description: 'Specifies the directory in which to write the migration file, defaults to the migrationsDir Schwifty receives at registration'
     }
 };
 
@@ -472,7 +473,7 @@ describe('Schwifty', () => {
             await server.stop();
         });
 
-        it('throws if migrationsDir is not specified in the first argument', async (flags) => {
+        it('throws if migrationsDir is not specified', async (flags) => {
 
             const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
@@ -492,7 +493,7 @@ describe('Schwifty', () => {
             let error;
 
             try {
-                await server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir, internals.hpalCtx);
+                await server.plugins.schwifty.commands['migrate:diff'](server, ['--dir', 'idk-bogus'], rootDir, internals.hpalCtx);
             }
             catch (err) {
                 error = err;
@@ -500,6 +501,70 @@ describe('Schwifty', () => {
 
             expect(error).to.exist();
             expect(error.message).to.equal('A name must be specified for the generated migration');
+
+            await server.stop();
+        });
+
+        it('throws if more than 1 non-flag arg is supplied', async (flags) => {
+
+            const rootDir = Path.join(__dirname, 'migrations/generated/root');
+            const migrationsDir = rootDir + '/migrations';
+
+            flags.onCleanup = internals.cleanDir.bind(null, migrationsDir);
+
+            const server = await getServer(getOptions({
+                migrationsDir,
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }));
+
+            await server.initialize();
+
+            let error;
+
+            try {
+                await server.plugins.schwifty.commands['migrate:diff'](server, ['am-i-migration-name?', '--dir', 'idk-bogus', 'or-am-i?', '--mode', 'create'], rootDir, internals.hpalCtx);
+            }
+            catch (err) {
+                error = err;
+            }
+
+            expect(error).to.exist();
+            expect(error.message).to.equal(Bossy.usage(internals.bossyDefinition));
+
+            await server.stop();
+        });
+
+        it('throws on invalid args', async (flags) => {
+
+            const rootDir = Path.join(__dirname, 'migrations/generated/root');
+            const migrationsDir = rootDir + '/migrations';
+
+            flags.onCleanup = internals.cleanDir.bind(null, migrationsDir);
+
+            const server = await getServer(getOptions({
+                migrationsDir,
+                models: [
+                    TestModels.Dog,
+                    TestModels.Person
+                ]
+            }));
+
+            await server.initialize();
+
+            let error;
+
+            try {
+                await server.plugins.schwifty.commands['migrate:diff'](server, ['--idk'], rootDir, internals.hpalCtx);
+            }
+            catch (err) {
+                error = err;
+            }
+
+            expect(error).to.exist();
+            expect(error.message).to.equal('Unknown option: idk' + Os.EOL + Bossy.usage(internals.bossyDefinition));
 
             await server.stop();
         });

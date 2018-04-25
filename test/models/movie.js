@@ -1,9 +1,9 @@
 'use strict';
 
 const Joi = require('joi');
-const Model = require('../..').Model;
+const Schwifty = require('../..');
 
-module.exports = class Movie extends Model {
+module.exports = class Movie extends Schwifty.Model {
 
     static get tableName() {
 

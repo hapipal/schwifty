@@ -1,12 +1,12 @@
 'use strict';
 
 const Joi = require('joi');
-const Model = require('../..').Model;
+const Schwifty = require('../..');
 
 // This model intended for use with test 'Suppresses alter and drop actions if mode is not set to "alter"'
 // Any alters should be ignored, this migration will be run with `mode: 'create'`
 
-module.exports = class AlterPerson extends Model {
+module.exports = class AlterPerson extends Schwifty.Model {
 
     static get tableName() {
 
