@@ -699,7 +699,9 @@ describe('Schwifty', () => {
                 require('../lib/schwifty-migrate-diff').get(true); // Passing a boolean as the path to require
             }
             catch (err) {
-                expect(err.message).to.equal('path must be a string');
+                // Different messages for Node 10 / below
+                const errIsExpected = (err.message === 'path must be a string' || err.message === 'The \"id\" argument must be of type string. Received type boolean');
+                expect(errIsExpected).to.equal(true);
             }
         });
     });
