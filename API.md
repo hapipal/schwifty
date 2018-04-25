@@ -127,13 +127,13 @@ Validates the model instance using its [`joiSchema`](#joischema).  This is imple
 Ensures that `ModelA` and `ModelB` have the same class `name`, share the same `tableName`, and that one model extends the other, otherwise throws an error.  When `message` is provided, it will be used as the message for any thrown error.
 
 ### [hpal](https://github.com/hapipal/hpal) `commands`
-- `hpal run schwifty:migrate:diff [mode] [migrationName] [migrationsDir]`
+- `hpal run schwifty:migrate:diff <migrationName> [--dir|--mode]`
   - Uses [schwifty-migrate-diff](https://github.com/BigRoomStudios/schwifty-migrate-diff/blob/master/README.md) to generate a migration file based on a diff of the project's Schwifty models and the database
   - Currently supports only 1 migrationsDir in your root project folder
-  - `mode`
-    - defaults to `create`, accepts `create` or `alter`
-      - When set to `create`, model changes that mutate a db table are ignored and won't be printed to the migration file
   - `migrationName`
-    - Name added to the migration file. Typically this is some description of the changes (e.g. 'userHometown')
-  - `migrationsDir`
+    - Name added to the migration file. Typically this is some description of the changes (e.g. 'user-hometown')
+  - `--mode`
+    - defaults to `alter`, accepts `create` or `alter`
+      - When set to `create`, model changes that mutate a db table are ignored and won't be printed to the migration file
+  - `--dir`
     - Specify a migrationsDir other than one in your root project
