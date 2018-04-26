@@ -56,7 +56,7 @@ Returns an object containing models keyed by their `name`.  Includes models base
 > npm install --save-dev schwifty-migrate-diff
 > ```
 
-`hpal run schwifty:migrate:diff` will generate a knex migration in your project's migrations directory that syncs your database to your Schwifty models based upon their current differences.  It is highly suggested that you inspect the generated migration file and adjust it to your particular needs—no assumptions are made about indexing, constraints, etc.
+`hpal run schwifty:migrate:diff` will generate a knex migration in your project's migrations directory that syncs your database to your schwifty models based upon their current differences.  It is highly suggested that you inspect the generated migration file and adjust it to your particular needs—no assumptions are made about indexing, constraints, etc.
 
 You must specify `<migration-name>` as a base name for the migration file.
 

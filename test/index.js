@@ -47,10 +47,21 @@ internals.cleanDir = (dir) => {
 
 // Mock the hpal ctx object
 internals.hpalCtx = (cwd) => ({
-    DisplayError: Error,
+    DisplayError: internals.DisplayError,
     colors: { red: (x) => x, yellow: (x) => x },
-    options: { colors: false, cwd }
+    output: internals.makeOutput(),
+    options: { cwd, colors: false }
 });
+
+internals.DisplayError = class DisplayError extends Error {};
+
+internals.makeOutput = () => {
+
+    const fn = (value) => fn.calls.push(value);
+    fn.calls = [];
+
+    return fn;
+};
 
 internals.bossyDefinition = {
     mode: {
@@ -272,7 +283,7 @@ describe('Schwifty', () => {
         ]);
     });
 
-    describe('hpal schwifty-migrate-diff command', () => {
+    describe('migrate:diff command', () => {
 
         before(() => {
 
@@ -283,30 +294,28 @@ describe('Schwifty', () => {
             internals.cleanDir(migrationsDir2);
         });
 
-        const validateOutput = (output, expectedOutput) => {
+        const validateOutput = (output, ctx, expected) => {
 
-            if (!output) {
-                return false;
+            expect(output).to.exist();
+            expect(output.code).to.equal(expected.code);
+            expect(output.skippedCols).to.equal(expected.skippedCols);
+            output.file && expect(output.file).to.endWith(`${expected.file}.js`);
+
+            if (output.code === SchwiftyMigrateDiff.returnCodes.MIGRATE) {
+                expect(ctx.output.calls).to.contain(`Generated migration in ${Path.relative(ctx.options.cwd, output.file)}.`);
             }
 
-            if (output.code !== expectedOutput.code) {
-                return false;
+            if (output.code === SchwiftyMigrateDiff.returnCodes.NO_MIGRATE) {
+                expect(ctx.output.calls).to.contain('Couldn\'t find any differences between your models and database, so no migration was generated.');
             }
-
-            if (String(output.skippedCols) !== String(expectedOutput.skippedCols)) {
-                return false;
-            }
-
-            // Just check if this is truthy or not -- we don't know the timestamp
-            // Knex is going to assign to the filename
-            if (Boolean(output.file) !== Boolean(expectedOutput.file)) {
-                return false;
-            }
-
-            return true;
         };
 
-        it('correctly registers', async (flags) => {
+        const runCommand = (server, ...args) => {
+
+            return server.plugins.schwifty.commands['migrate:diff'].command(server, ...args);
+        };
+
+        it('is registered for use with hpal.', async (flags) => {
 
             const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
@@ -321,24 +330,27 @@ describe('Schwifty', () => {
                 ]
             }));
 
-            expect(server.plugins.schwifty.commands && server.plugins.schwifty.commands['migrate:diff']).to.exist();
+            expect(server.plugins.schwifty.commands).to.exist();
+            expect(server.plugins.schwifty.commands['migrate:diff']).to.exist();
 
             await server.initialize();
 
-            const output = await server.plugins.schwifty.commands['migrate:diff'](server, ['test'], rootDir, internals.hpalCtx(rootDir));
+            const ctx = internals.hpalCtx(rootDir);
+            const output = await runCommand(server, ['test'], rootDir, ctx);
+
             await server.stop();
 
-            expect(validateOutput(output, {
+            validateOutput(output, ctx, {
                 code: SchwiftyMigrateDiff.returnCodes.MIGRATION,
-                file: 'truthy',
+                file: 'test',
                 skippedColumns: []
-            })).to.equal(true);
+            });
 
             const expectedMigrationPath = Path.join(__dirname, 'migrations/expected-generated-migration.js');
             expect(internals.checkMigrationMatches(expectedMigrationPath, migrationsDir)).to.equal(true);
         });
 
-        it('ignores "alter" migration changes when "mode" is set to "create"', async (flags) => {
+        it('writes appropriate migrations for --mode set to "alter" and "create".', async (flags) => {
 
             const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
@@ -362,33 +374,61 @@ describe('Schwifty', () => {
 
             // First run the migration with mode set to 'alter' (the default)
 
-            const alterOutput = await server.plugins.schwifty.commands['migrate:diff'](server, ['test', '--mode', 'alter'], rootDir, internals.hpalCtx(rootDir));
+            const alterCtx = internals.hpalCtx(rootDir);
+            const alterOutput = await runCommand(server, ['test', '--mode', 'alter'], rootDir, alterCtx);
 
-            expect(validateOutput(alterOutput, {
+            validateOutput(alterOutput, alterCtx, {
                 code: SchwiftyMigrateDiff.returnCodes.MIGRATION,
-                file: 'truthy',
+                file: 'test',
                 skippedColumns: []
-            })).to.equal(true);
+            });
 
             const expectedAlterMigrationPath = Path.join(__dirname, 'migrations/expected-alter-generated-migration.js');
             expect(internals.checkMigrationMatches(expectedAlterMigrationPath, migrationsDir)).to.equal(true);
 
             // Now let's run the migration with mode set to create!
 
-            const createOutput = await server.plugins.schwifty.commands['migrate:diff'](server, ['test', '--mode', 'create'], rootDir, internals.hpalCtx(rootDir));
+            const createCtx = internals.hpalCtx(rootDir);
+            const createOutput = await runCommand(server, ['test', '--mode', 'create'], rootDir, createCtx);
             await server.stop();
 
-            expect(validateOutput(createOutput, {
+            validateOutput(createOutput, createCtx, {
                 code: SchwiftyMigrateDiff.returnCodes.MIGRATION,
-                file: 'truthy',
+                file: 'test',
                 skippedColumns: []
-            })).to.equal(true);
+            });
 
             const expectedCreateMigrationPath = Path.join(__dirname, 'migrations/expected-create-generated-migration.js');
             expect(internals.checkMigrationMatches(expectedCreateMigrationPath, migrationsDir)).to.equal(true);
         });
 
-        it('throws if anything other than "create" or "alter" is passed to the "mode" flag', async (flags) => {
+        it('does not write a migration if there are no updates to be made.', async (flags) => {
+
+            const rootDir = Path.join(__dirname, 'migrations/generated/root');
+            const migrationsDir = rootDir + '/migrations';
+
+            flags.onCleanup = internals.cleanDir.bind(null, migrationsDir);
+
+            const server = await getServer(getOptions({
+                migrationsDir,
+                models: []  // Empty
+            }));
+
+            await server.initialize();
+
+            const ctx = internals.hpalCtx(rootDir);
+            const output = await runCommand(server, ['test'], rootDir, ctx);
+
+            await server.stop();
+
+            validateOutput(output, ctx, {
+                code: SchwiftyMigrateDiff.returnCodes.NO_MIGRATION,
+                file: null,
+                skippedColumns: []
+            });
+        });
+
+        it('throws if anything other than "create" or "alter" is passed to the --mode flag.', async (flags) => {
 
             const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
@@ -405,14 +445,14 @@ describe('Schwifty', () => {
 
             await server.initialize();
 
-            const run = server.plugins.schwifty.commands['migrate:diff'](server, ['test', '--mode', 'zombie'], rootDir, internals.hpalCtx(rootDir));
+            const run = runCommand(server, ['test', '--mode', 'zombie'], rootDir, internals.hpalCtx(rootDir));
 
             await expect(run).to.reject(/Invalid value for option: mode \(valid: 'alter','create'\)/);
 
             await server.stop();
         });
 
-        it('throws if migrationsDir is not specified', async (flags) => {
+        it('throws if <migration-name> is not specified.', async (flags) => {
 
             const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
@@ -429,13 +469,13 @@ describe('Schwifty', () => {
 
             await server.initialize();
 
-            const run = server.plugins.schwifty.commands['migrate:diff'](server, [], rootDir, internals.hpalCtx(rootDir));
+            const run = runCommand(server, [], rootDir, internals.hpalCtx(rootDir));
             await expect(run).to.reject(/You must specify a <migration-name>/);
 
             await server.stop();
         });
 
-        it('throws if more than 1 non-flag arg is supplied', async (flags) => {
+        it('throws if more than one non-flag arg is supplied.', async (flags) => {
 
             const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
@@ -452,14 +492,14 @@ describe('Schwifty', () => {
 
             await server.initialize();
 
-            const run = server.plugins.schwifty.commands['migrate:diff'](server, ['am-i-migration-name?', 'or-am-i?', '--mode', 'create'], rootDir, internals.hpalCtx(rootDir));
+            const run = runCommand(server, ['am-i-migration-name?', 'or-am-i?', '--mode', 'create'], rootDir, internals.hpalCtx(rootDir));
 
             await expect(run).to.reject(/Did you try to specify something other than a <migrations-dir> or <mode>\?/);
 
             await server.stop();
         });
 
-        it('throws on invalid args', async (flags) => {
+        it('throws on invalid args.', async (flags) => {
 
             const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
@@ -476,14 +516,14 @@ describe('Schwifty', () => {
 
             await server.initialize();
 
-            const run = server.plugins.schwifty.commands['migrate:diff'](server, ['--idk'], rootDir, internals.hpalCtx(rootDir));
+            const run = runCommand(server, ['--idk'], rootDir, internals.hpalCtx(rootDir));
 
             await expect(run).to.reject(/Unknown option: idk/);
 
             await server.stop();
         });
 
-        it('throws if no migrationsDirs are found in root', async (flags) => {
+        it('throws if no migrationsDirs are found in root.', async (flags) => {
 
             const rootDir = Path.join(__dirname, 'migrations/generated/root');
             const migrationsDir = rootDir + '/migrations';
@@ -499,14 +539,14 @@ describe('Schwifty', () => {
 
             await server.initialize();
 
-            const run = server.plugins.schwifty.commands['migrate:diff'](server, ['test'], rootDir, internals.hpalCtx(rootDir));
+            const run = runCommand(server, ['test'], rootDir, internals.hpalCtx(rootDir));
 
             await expect(run).to.reject(/At least one migrations directory must be present/);
 
             await server.stop();
         });
 
-        it('throws on more than 1 migrationsDir in root', async (flags) => {
+        it('throws if more than one migrationsDir is found in root.', async (flags) => {
 
             const rootDir = Path.join(__dirname, 'migrations');
             const migrationsDir = './test/migrations/generated/root/migrations';
@@ -539,22 +579,13 @@ describe('Schwifty', () => {
             await server.register(plugin);
             await server.initialize();
 
-            let error;
-
-            try {
-                await server.plugins.schwifty.commands['migrate:diff'](server, ['test'], rootDir, internals.hpalCtx(rootDir));
-            }
-            catch (err) {
-                error = err;
-            }
-
-            expect(error).to.exist();
-            expect(error.message).to.equal('Only one migrations directory supported per project at this time. Please remove one of generated/root/migrations, generated2/root/migrations.');
+            const run = runCommand(server, ['test'], rootDir, internals.hpalCtx(rootDir));
+            await expect(run).to.reject('Only one migrations directory supported per project at this time. Please remove one of generated/root/migrations, generated2/root/migrations.');
 
             await server.stop();
         });
 
-        it('throws asking the user to install schwifty-migrate-diff if not already installed', async (flags) => {
+        it('throws asking the user to install schwifty-migrate-diff if not already installed.', async (flags) => {
 
             const originalGet = Helpers.getSchwiftyMigrateDiff;
 
@@ -576,30 +607,21 @@ describe('Schwifty', () => {
                 ]
             }));
 
-            let errHappened = false;
+            const run = runCommand(server, ['test'], rootDir, internals.hpalCtx(rootDir));
+            await expect(run).to.reject('To use this command please first install `npm install --save-dev schwifty-migrate-diff`');
 
-            await server.initialize();
-            try {
-                await server.plugins.schwifty.commands['migrate:diff'](server, ['test'], rootDir, internals.hpalCtx(rootDir));
-            }
-            catch (err) {
-                errHappened = true;
-                expect(err.message).to.equal('To use this command please first install `npm install --save-dev schwifty-migrate-diff`');
-            }
-
-            expect(errHappened).to.equal(true);
             await server.stop();
         });
     });
 
-    describe('schwifty-migrate-diff require helper', () => {
+    describe('Helpers.getSchwiftyMigrateDiff()', () => {
 
-        it('returns undefined if schwifty-migrate-diff is not found', () => {
+        it('returns undefined if schwifty-migrate-diff is not found.', () => {
 
             expect(Helpers.getSchwiftyMigrateDiff('bogus/path')).to.not.exist();
         });
 
-        it('throws if trying to require schwifty-migrate-diff throws an error unrelated to requiring the module', () => {
+        it('throws if trying to require schwifty-migrate-diff throws an error unrelated to requiring the module.', () => {
 
             expect(() => Helpers.getSchwiftyMigrateDiff(require.resolve('./closet/bad-syntax'))).to.throw(SyntaxError);
         });
