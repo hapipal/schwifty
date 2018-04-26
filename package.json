@@ -4,7 +4,7 @@
   "description": "A hapi plugin integrating Objection ORM",
   "main": "lib/index.js",
   "scripts": {
-    "test": "lab -a code -t 100 -I '__core-js_shared__' -L",
+    "test": "lab --flat -a code -t 100 -I '__core-js_shared__' -L",
     "coveralls": "lab -r lcov | coveralls"
   },
   "repository": {
@@ -45,7 +45,7 @@
     "lab": "15.x.x",
     "objection": "1.x.x",
     "schwifty-migrate-diff": "git+https://git@github.com/bigroomstudios/schwifty-migrate-diff.git",
-    "sqlite3": "^4.0.0"
+    "sqlite3": "4.x.x"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",
   "license": "MIT"

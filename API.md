@@ -44,6 +44,23 @@ Returns knex instance under schwifty's [plugin ownership of knex instances](#kne
 #### `h.models([all])`
 Returns an object containing models keyed by their `name`.  Includes models based upon schwifty's [plugin ownership of models](#models), where the active plugin is the one in which the corresponding route or server extension was declared (i.e. based upon `h.realm`).  When `all` is `true`, models across the entire server are returned.
 
+### [hpal](https://github.com/hapipal/hpal) commands
+
+#### `schwifty:migrate:diff`
+> `hpal run schwifty:migrate:diff <migration-name> [--mode alter|create]`
+>
+> **Note**
+>
+> To use this command, install [schwifty-migrate-diff](https://github.com/BigRoomStudios/schwifty-migrate-diff) in your project.
+> ```sh
+> npm install --save-dev schwifty-migrate-diff
+> ```
+
+`hpal run schwifty:migrate:diff` will generate a knex migration in your project's migrations directory that syncs your database to your Schwifty models based upon their current differences.  It is highly suggested that you inspect the generated migration file and adjust it to your particular needs—no assumptions are made about indexing, constraints, etc.
+
+You must specify `<migration-name>` as a base name for the migration file.
+
+You may specify the `--mode` as `alter` (default) or `create`.  The `alter` mode will write a migration that creates tables, adds columns, drops columns, and changes column types.  The `create` mode will write a migration that creates tables and adds columns, i.e. non-destructive actions.
 
 ### Plugin ownership of knex instances and models
 > How do plugins "own" knex instances and models?
@@ -125,15 +142,3 @@ Validates the model instance using its [`joiSchema`](#joischema).  This is imple
 ## Utilities
 ### `Schwifty.assertCompatible(ModelA, ModelB, [message])`
 Ensures that `ModelA` and `ModelB` have the same class `name`, share the same `tableName`, and that one model extends the other, otherwise throws an error.  When `message` is provided, it will be used as the message for any thrown error.
-
-### [hpal](https://github.com/hapipal/hpal) `commands`
-- `hpal run schwifty:migrate:diff <migrationName> [--dir|--mode]`
-  - Uses [schwifty-migrate-diff](https://github.com/BigRoomStudios/schwifty-migrate-diff/blob/master/README.md) to generate a migration file based on a diff of the project's Schwifty models and the database
-  - Currently supports only 1 migrationsDir in your root project folder
-  - `migrationName`
-    - Name added to the migration file. Typically this is some description of the changes (e.g. 'user-hometown')
-  - `--mode`
-    - defaults to `alter`, accepts `create` or `alter`
-      - When set to `create`, model changes that mutate a db table are ignored and won't be printed to the migration file
-  - `--dir`
-    - Specify a migrationsDir other than one in your root project
