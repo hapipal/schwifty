@@ -45,7 +45,6 @@
     "knex": "0.14.x",
     "lab": "15.x.x",
     "objection": "1.x.x",
-    "schwifty-migrate-diff": "0.0.4",
     "sqlite3": "4.x.x"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",
