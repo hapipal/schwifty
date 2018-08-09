@@ -28,6 +28,7 @@
   "dependencies": {
     "hoek": "5.x.x",
     "joi": "13.x.x",
+    "mysql": "^2.16.0",
     "tmp": "0.0.33",
     "toys": "2.x.x"
   },
@@ -44,7 +45,7 @@
     "knex": "0.14.x",
     "lab": "15.x.x",
     "objection": "1.x.x",
-    "schwifty-migrate-diff": "git+https://git@github.com/bigroomstudios/schwifty-migrate-diff.git",
+    "schwifty-migrate-diff": "0.0.4",
     "sqlite3": "4.x.x"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",
