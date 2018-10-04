@@ -12,7 +12,7 @@ Lead Maintainer - [Devin Ivy](https://github.com/devinivy)
   </summary>
 <p>
 <br>
-This module is specialized to work with the [hapipal boilerplate](https://github.com/hapipal/boilerplate)
+This module is specialized to work with the <a href='https://github.com/hapipal/boilerplate'>hapipal boilerplate</a>
 
 #### Boilerplate setup
 
