@@ -6,6 +6,114 @@ A [hapi](https://github.com/hapijs/hapi) plugin integrating [Objection ORM](http
 
 Lead Maintainer - [Devin Ivy](https://github.com/devinivy)
 
+<details>
+  <summary>
+    <img src='https://imgur.com/SZIjzOW.png' width=50> **Boilerplate Integration**
+  </summary>
+
+  This module is specialized to work with the [hapipal boilerplate](https://github.com/hapipal/boilerplate)
+
+  <h4>Boilerplate setup</h4>
+  ```sh
+  # Clone new hapipal project
+  npx hpal new my-project
+  cd ./my-project
+  npm install
+
+  # Make your first commit to init project history
+  git add --all
+  git commit -m "Init commit"
+  ```
+  Now we're ready to add the `Objection ORM` flavor
+
+  ```sh
+  git fetch pal --tags
+  git cherry-pick objection
+  npm install
+  ```
+  <h4>Flavor Results</h4>
+  `git status` should show
+  ```sh
+  Changes to be committed:
+
+  	new file:   knexfile.js
+  	new file:   lib/migrations/.gitkeep
+  	new file:   lib/models/.gitkeep
+  	new file:   lib/plugins/schwifty.js
+  	modified:   package.json
+  	modified:   server/manifest.js
+
+  Unmerged paths:
+    (use "git add/rm <file>..." as appropriate to mark resolution)
+
+  	deleted by them: package-lock.json
+  ```
+
+  <h4>Usage setup</h4>
+  ```sh
+  hpal make model Dog
+  # Wrote lib/models/Dog.js
+  hpal make route dogs
+  # Wrote lib/routes/dogs.js
+  ```
+  Time to write a migration file – more about `knex` migration files [here]()
+  ```sh
+  knex migrate:make dogs
+  # Created Migration: path/to/my-project/lib/migrations/20181004162336_dogs.js
+  ```
+
+  Edit that file
+
+  ```js
+  exports.up = function(knex, Promise) {
+
+      return knex.schema.createTable('Dog', (table) => {
+
+          table.increments('id').primary();
+          table.string('name');
+      })
+      .then(() => {
+
+          // This part is for demo purposes only, you should use knex seeds to
+          // put model fixtures in your project if you want the db to have any
+          return Promise.all([
+              knex('Dog').insert({ name: 'Guinness' }),
+              knex('Dog').insert({ name: 'Sully' }),
+              knex('Dog').insert({ name: 'Ren' })
+          ]);
+      });
+  };
+
+  exports.down = function(knex, Promise) {
+
+      return knex.schema.dropTable('Dog');
+  };
+  ```
+
+  Schwifty's defaults will ensure this migration is run when you start the server via `migrateOnStart: true`
+
+  <h4>Fill in details</h4>
+
+  Fill in the details of `lib/models/Dog` and `lib/routes/dogs` based on the `Usage` section below
+
+  **NOTE** It's important to change the class name of your model to `Dog`, or
+  whatever matches your tablename
+
+  <h4>Dog catcher</h4>
+  Use hpal to catch some dogs
+  ```
+  hpal run debug:curl /dogs/1
+  # Dog { id: 1, name: 'Guinness' }
+
+  hpal run debug:curl /dogs/2
+  Dog { id: 2, name: 'Sully' }
+
+  hpal run debug:curl /dogs/3
+  Dog { id: 3, name: 'Ren' }
+  ```
+
+</details>
+
 ## Usage
 > See also the [API Reference](API.md)
 
