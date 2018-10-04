@@ -8,7 +8,7 @@ Lead Maintainer - [Devin Ivy](https://github.com/devinivy)
 
 <details>
   <summary>
-    <img src='https://imgur.com/SZIjzOW.png' width=50> **Boilerplate Integration**
+    <img src='https://imgur.com/SZIjzOW.png' width=50> <b>Boilerplate Integration</b>
   </summary>
 
   <p>
