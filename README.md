@@ -99,7 +99,7 @@ Schwifty's defaults will ensure this migration is run when you start the server 
 Fill in the details of `lib/models/Dog` and `lib/routes/dogs` based on the `Usage` section below
 
 **NOTE** It's important to change the class name of your model to `Dog`, or
-whatever matches your tablename
+whatever matches your tableName
 
 #### Dog catcher
 Use hpal to catch some dogs
