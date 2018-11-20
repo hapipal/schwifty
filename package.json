@@ -26,8 +26,8 @@
     "orm"
   ],
   "dependencies": {
-    "hoek": "5.x.x",
-    "joi": "13.x.x",
+    "hoek": "6.x.x",
+    "joi": "14.x.x",
     "tmp": "0.0.33",
     "toys": "2.x.x"
   },
@@ -40,8 +40,8 @@
     "code": "5.x.x",
     "coveralls": "3.x.x",
     "hapi": "17.x.x",
-    "knex": "0.14.x",
-    "lab": "15.x.x",
+    "knex": "0.15.x",
+    "lab": "18.x.x",
     "objection": "1.x.x",
     "sqlite3": "4.x.x"
   },
