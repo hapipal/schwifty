@@ -123,7 +123,7 @@ describe('Schwifty', () => {
         server.knex().destroy = () => {
 
             ++toredown;
-            return origDestroy();
+            return origDestroy.call(server.knex());
         };
 
         await server.initialize();
@@ -152,11 +152,11 @@ describe('Schwifty', () => {
 
                 expect(srv.knex()).to.not.shallow.equal(server.knex());
 
-                const origDestroy = server.knex().destroy;
-                server.knex().destroy = () => {
+                const origDestroy = srv.knex().destroy;
+                srv.knex().destroy = () => {
 
                     ++toredown;
-                    return origDestroy();
+                    return origDestroy.call(srv.knex());
                 };
             }
         };
@@ -170,11 +170,11 @@ describe('Schwifty', () => {
                 // Plugin 2 will use the root server's (referenced by server variable) knex connection
                 expect(srv.knex()).to.shallow.equal(server.knex());
 
-                const origDestroy = server.knex().destroy;
-                server.knex().destroy = () => {
+                const origDestroy = srv.knex().destroy;
+                srv.knex().destroy = () => {
 
                     ++toredown;
-                    return origDestroy();
+                    return origDestroy.call(srv.knex());
                 };
             }
         };
@@ -196,7 +196,7 @@ describe('Schwifty', () => {
         server.knex().destroy = () => {
 
             ++toredown;
-            return origDestroy();
+            return origDestroy.call(server.knex());
         };
 
         server.ext('onPreStop', () => {

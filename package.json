@@ -32,15 +32,15 @@
     "toys": "2.x.x"
   },
   "peerDependencies": {
-    "hapi": ">=17 <18",
+    "hapi": ">=17 <19",
     "knex": ">=0.8",
     "objection": ">=1 <2"
   },
   "devDependencies": {
     "code": "5.x.x",
     "coveralls": "3.x.x",
-    "hapi": "17.x.x",
-    "knex": "0.15.x",
+    "hapi": "18.x.x",
+    "knex": "0.16.x",
     "lab": "18.x.x",
     "objection": "1.x.x",
     "sqlite3": "4.x.x"
