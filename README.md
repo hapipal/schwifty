@@ -2,7 +2,7 @@
 
 A [hapi](https://github.com/hapijs/hapi) plugin integrating [Objection ORM](https://github.com/Vincit/objection.js)
 
-[![Build Status](https://travis-ci.org/hapipal/schwifty.svg?branch=master)](https://travis-ci.org/hapipal/schwifty) [![Coverage Status](https://coveralls.io/repos/github/hapipal/schwifty/badge.svg?branch=master)](https://coveralls.io/github/hapipal/schwifty?branch=master) [![Security Status](https://nodesecurity.io/orgs/schwifty/projects/43d64006-d2bd-41c7-a288-5ae051d0e3c2/badge)](https://nodesecurity.io/orgs/schwifty/projects/43d64006-d2bd-41c7-a288-5ae051d0e3c2)
+[![Build Status](https://travis-ci.org/hapipal/schwifty.svg?branch=master)](https://travis-ci.org/hapipal/schwifty) [![Coverage Status](https://coveralls.io/repos/github/hapipal/schwifty/badge.svg?branch=master)](https://coveralls.io/github/hapipal/schwifty?branch=master)
 
 Lead Maintainer - [Devin Ivy](https://github.com/devinivy)
 
