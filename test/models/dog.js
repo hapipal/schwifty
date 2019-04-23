@@ -1,6 +1,6 @@
 'use strict';
 
-const Joi = require('joi');
+const Joi = require('@hapi/joi');
 const Model = require('../..').Model;
 
 module.exports = class Dog extends Model {
