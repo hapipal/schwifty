@@ -26,7 +26,7 @@
     "orm"
   ],
   "dependencies": {
-    "@hapi/hoek": "6.x.x",
+    "@hapi/hoek": "8.x.x",
     "@hapi/joi": "16.x.x",
     "tmp": "0.1.x",
     "toys": "2.x.x"
@@ -37,9 +37,9 @@
     "objection": ">=1 <2"
   },
   "devDependencies": {
-    "@hapi/code": "5.x.x",
+    "@hapi/code": "6.x.x",
     "@hapi/hapi": "18.x.x",
-    "@hapi/lab": "18.x.x",
+    "@hapi/lab": "20.x.x",
     "coveralls": "3.x.x",
     "knex": "0.16.x",
     "objection": "1.x.x",
