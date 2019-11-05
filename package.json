@@ -1,6 +1,6 @@
 {
   "name": "schwifty",
-  "version": "4.2.1",
+  "version": "4.2.2",
   "description": "A hapi plugin integrating Objection ORM",
   "main": "lib/index.js",
   "scripts": {
