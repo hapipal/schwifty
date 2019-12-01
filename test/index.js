@@ -2,9 +2,7 @@
 
 // Load modules
 
-const Fs = require('fs');
 const Path = require('path');
-const Tmp = require('tmp');
 const Lab = require('@hapi/lab');
 const Code = require('@hapi/code');
 const Hapi = require('@hapi/hapi');
@@ -995,51 +993,6 @@ describe('Schwifty', () => {
 
             // If 2nd-bad had run, that would be the current version due to sort order
             expect(version).to.equal('1st-good.js');
-        });
-
-        it('bails when failing to make a temp migrations directory.', async () => {
-
-            const server = await getServer(getOptions({
-                migrationsDir: './test/migrations/basic',
-                migrateOnStart: true
-            }));
-
-            // Monkey-patches Tmp.dir to simulate an error in that method
-            const origTmpDir = Tmp.dir;
-            Tmp.dir = (opts, cb) => {
-
-                // Reverts Tmp.dir back to its original definition, so subsequent tests use the normal function
-                Tmp.dir = origTmpDir;
-                cb(new Error('Generating temp dir failed.'));
-            };
-
-            // We expect server initialization to fail with the simulated Tmp error message
-            await expect(server.initialize()).to.reject('Generating temp dir failed.');
-
-            const version = await server.knex().migrate.currentVersion();
-            expect(version).to.equal('none');
-        });
-
-        it('bails when failing to read a migrations directory.', async () => {
-
-            const server = await getServer(getOptions({
-                migrationsDir: './test/migrations/basic',
-                migrateOnStart: true
-            }));
-
-            // Monkey-patches Fs.readdir to simulate an error in that method
-            const origReaddir = Fs.readdir;
-            Fs.readdir = (opts, cb) => {
-
-                // Reverts Fs.readdir back to its original definition, so subsequent tests use the normal function
-                Fs.readdir = origReaddir;
-                cb(new Error('Reading migrations dir failed.'));
-            };
-
-            await expect(server.initialize()).to.reject('Reading migrations dir failed.');
-
-            const version = await server.knex().migrate.currentVersion();
-            expect(version).to.equal('none');
         });
     });
 

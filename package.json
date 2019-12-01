@@ -28,13 +28,12 @@
   "dependencies": {
     "@hapi/hoek": "8.x.x",
     "@hapi/joi": "15.x.x",
-    "tmp": "0.1.x",
     "toys": "2.x.x"
   },
   "peerDependencies": {
     "@hapi/hapi": ">=17 <19",
     "@hapi/joi": ">=14 <16",
-    "knex": ">=0.8",
+    "knex": ">=0.16",
     "objection": ">=1 <2"
   },
   "devDependencies": {
