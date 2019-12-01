@@ -20,7 +20,7 @@ Used to declare models, knex instances, and migration directory information on a
   - An object specifying,
     - `knex` - a knex instance or [configuration](https://knexjs.org/#Installation-client) associated with the current plugin or root server.  It may only be specified once per plugin/server.
     - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the current plugin or root server.
-    - `migrationsDir` - specifies a directory of knex migrations associated with the current plugin or root server.  The directory path may be either absolute, relative to the plugin's [path prefix](https://hapi.dev/api/#-serverpathrelativeto) when set, or otherwise relative to the current working directory.  It cannot be specified more than once within a plugin or on the root server.
+    - `migrationsDir` - specifies a directory of knex migrations associated with the current plugin or root server.  The directory path may be either absolute, relative to the plugin's [path prefix](https://hapi.dev/api/#server.path()) when set, or otherwise relative to the current working directory.  It cannot be specified more than once within a plugin or on the root server.
 
 #### `server.knex()`
 Returns `server`'s knex instance under schwifty's [plugin ownership of knex instances](#knex-instances).
