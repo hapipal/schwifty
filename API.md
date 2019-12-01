@@ -1,4 +1,9 @@
 # API
+
+> **Note**
+>
+> Schwifty is intended for use with hapi v17+, joi v14 and v15, Objection v1 and v2, knex v0.8+, and nodejs v8+.
+
 ## The hapi plugin
 ### Registration
 Schwifty may be registered multiple times—it should be registered in any plugin that would like to use any of its features.  Upon each registration these options are collected until server initialization.  Models and knex configurations passed during configuration are attributed to the registering plugin/server under schwifty's [ownership system](#plugin-ownership-of-knex-instances-and-models). The model(s) `name` must be unique across the entire server.  Server initialization will fail if any knex instances handled by schwifty do not have basic database connectivity.
