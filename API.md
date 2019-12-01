@@ -5,10 +5,10 @@ Schwifty may be registered multiple times—it should be registered in any plugi
 
 Schwifty takes the following registration options,
 
-  - `knex` - a knex instance or [configuration](http://knexjs.org/#Installation-client).  It may only be specified once per plugin/server.
-  - `models` - an array of objection or [schwifty model classes](#schwiftymodel).  May also be a path to a module that exports such an array—either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.
-  - `migrationsDir` - specifies a directory of knex migrations.  The directory path may be either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.  It may only be specified once per plugin/server.
-  - `migrateOnStart` - a boolean, `'latest'`, or `'rollback'`, to determine how to handle [knex migrations](http://knexjs.org/#Migrations) at server initialization time.  Defaults to `false`, which indicates to not handle migrations at all.  When `true` or `'latest'`, runs all migrations that have not been run.  When `'rollback'`, rolls-back the latest group of migrations.  It may only be specified once.
+  - `knex` - a knex instance or [configuration](https://knexjs.org/#Installation-client).  It may only be specified once per plugin/server.
+  - `models` - an array of objection or [schwifty model classes](#schwiftymodel).  May also be a path to a module that exports such an array—either absolute, relative to the server's [path prefix](https://hapi.dev/api/#server.path()) when set, or otherwise relative to the current working directory.
+  - `migrationsDir` - specifies a directory of knex migrations.  The directory path may be either absolute, relative to the server's [path prefix](https://hapi.dev/api/#server.path()) when set, or otherwise relative to the current working directory.  It may only be specified once per plugin/server.
+  - `migrateOnStart` - a boolean, `'latest'`, or `'rollback'`, to determine how to handle [knex migrations](https://knexjs.org/#Migrations) at server initialization time.  Defaults to `false`, which indicates to not handle migrations at all.  When `true` or `'latest'`, runs all migrations that have not been run.  When `'rollback'`, rolls-back the latest group of migrations.  It may only be specified once.
   - `teardownOnStop` - a boolean indicating whether or not all knex connections should be torn-down when the hapi server stops (after server connections are drained).  Defaults to `true`, and may only be specified once.
 
 
@@ -18,9 +18,9 @@ Used to declare models, knex instances, and migration directory information on a
 
   - An objection or [schwifty model class](#schwiftymodel), or an array of such model classes associated with the current plugin or root server.
   - An object specifying,
-    - `knex` - a knex instance or [configuration](http://knexjs.org/#Installation-client) associated with the current plugin or root server.  It may only be specified once per plugin/server.
+    - `knex` - a knex instance or [configuration](https://knexjs.org/#Installation-client) associated with the current plugin or root server.  It may only be specified once per plugin/server.
     - `models` - An array of objection or [schwifty model classes](#schwiftymodel) associated with the current plugin or root server.
-    - `migrationsDir` - specifies a directory of knex migrations associated with the current plugin or root server.  The directory path may be either absolute, relative to the plugin's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.  It cannot be specified more than once within a plugin or on the root server.
+    - `migrationsDir` - specifies a directory of knex migrations associated with the current plugin or root server.  The directory path may be either absolute, relative to the plugin's [path prefix](https://hapi.dev/api/#-serverpathrelativeto) when set, or otherwise relative to the current working directory.  It cannot be specified more than once within a plugin or on the root server.
 
 #### `server.knex()`
 Returns `server`'s knex instance under schwifty's [plugin ownership of knex instances](#knex-instances).
@@ -101,26 +101,26 @@ server.dependency('schwifty', someDbConnectedTask);
 Second, every knex instance declared during [plugin registration](#registration) or with [`server.schwifty({ knex })`](#serverschwiftyconfig) is checked for connectivity.  If any instance of knex does not have database connectivity, you will receive an error and your server will not initialize.  While this does not make any guarantees about table existence or structure, it does guarantee database connectivity at server initialization time.
 
 #### Migrations
-Lastly, if you specified `migrateOnStart` as `true`, `'latest'`, or `'rollback'`, then migrations will be run against each knex instance.  Your instance of knex may specify its own [knex migration options](http://knexjs.org/#Migrations-API), except for `directory`, which will be ignored in favor of the migration directories declared using the `migrationsDir` option with [`server.schwifty()`](#serverschwiftyconfig).
+Lastly, if you specified `migrateOnStart` as `true`, `'latest'`, or `'rollback'`, then migrations will be run against each knex instance.  Your instance of knex may specify its own [knex migration options](https://knexjs.org/#Migrations-API), except for `directory`, which will be ignored in favor of the migration directories declared using the `migrationsDir` option with [`server.schwifty()`](#serverschwiftyconfig).
 
 If a knex instance is shared across plugins (under [plugin ownership of knex instances](#knex-instances)) and each plugin specifies its own migrations directory using `migrationsDir`, then migrations from each of those plugin's migrations directories will simply be run against the knex instance.  In short, schwifty pluginizes knex migrations.
 
-The `migrateOnStart` options `true` and `'latest'` correspond to [`knex.migrate.latest()`](http://knexjs.org/#Migrations-latest), while `'rollback'` corresponds to [`knex.migrate.rollback()`](http://knexjs.org/#Migrations-rollback).
+The `migrateOnStart` options `true` and `'latest'` correspond to [`knex.migrate.latest()`](https://knexjs.org/#Migrations-latest), while `'rollback'` corresponds to [`knex.migrate.rollback()`](https://knexjs.org/#Migrations-rollback).
 
 ## `Schwifty.Model`
-Schwifty's model class extends [`Objection.Model`](http://vincit.github.io/objection.js/#model), adding support for [Joi](https://github.com/hapijs/joi) schemas wherever objection's base model class employs [`jsonSchema`](http://vincit.github.io/objection.js/#jsonschema).  This primarily plays into model instance validation and serialization of JSON/array fields.
+Schwifty's model class extends [`Objection.Model`](https://vincit.github.io/objection.js/api/model/), adding support for [Joi](https://github.com/hapijs/joi) schemas wherever objection's base model class employs [`jsonSchema`](https://vincit.github.io/objection.js/api/model/static-properties.html#static-jsonschema).  This primarily plays into model instance validation and serialization of JSON/array fields.
 
 ### `joiSchema`
-An optional [`Joi.object()`](https://github.com/hapijs/joi/blob/master/API.md#object---inherits-from-any) schema, where each of its keys is a field of the given model.
+An optional [`Joi.object()`](https://hapi.dev/family/joi/#object) schema, where each of its keys is a field of the given model.
 
 ### `jsonAttributes`
-This property is computed as a getter using the contents of `joiSchema`.  Any of the schema's keys that are [`Joi.object()`](https://github.com/hapijs/joi/blob/master/API.md#object---inherits-from-any)s or [`Joi.array()`](https://github.com/hapijs/joi/blob/master/API.md#array---inherits-from-any)s will be included in the list of JSON attributes.  If this property is set, it will forget about having been computed.  For more info, see objection's [`jsonAttributes`](http://vincit.github.io/objection.js/#jsonattributes).
+This property is computed as a getter using the contents of `joiSchema`.  Any of the schema's keys that are [`Joi.object()`](https://hapi.dev/family/joi/#object)s or [`Joi.array()`](https://hapi.dev/family/joi/#array)s will be included in the list of JSON attributes.  If this property is set, it will forget about having been computed.  For more info, see objection's [`jsonAttributes`](https://vincit.github.io/objection.js/api/model/static-properties.html#static-jsonattributess).
 
 ### `getJoiSchema([patch])`
 Returns the [`joiSchema`](#joischema) and memoizes the result.  This is useful when `joiSchema` is defined as a getter, but you'd like to avoid constantly recompiling the schema when accessing it.  Past memoization is forgotten by extended classes.  When `patch` is `true`, the same schema is returned (and memoized separately), but set so that it ignores default values and missing required fields.
 
 ### `model.$validate()`
-Validates the model instance using its [`joiSchema`](#joischema).  This is implemented using objection's [`Validator`](http://vincit.github.io/objection.js/#validator) interface.
+Validates the model instance using its [`joiSchema`](#joischema).  This is implemented using objection's [`Validator`](https://vincit.github.io/objection.js/api/types/#class-validator) interface.
 
 ## Utilities
 ### `Schwifty.assertCompatible(ModelA, ModelB, [message])`

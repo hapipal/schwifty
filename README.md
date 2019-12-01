@@ -1,6 +1,6 @@
 # schwifty
 
-A [hapi](https://github.com/hapijs/hapi) plugin integrating [Objection ORM](https://github.com/Vincit/objection.js)
+A [hapi](https://hapi.dev) plugin integrating [Objection ORM](https://github.com/Vincit/objection.js/)
 
 [![Build Status](https://travis-ci.org/hapipal/schwifty.svg?branch=master)](https://travis-ci.org/hapipal/schwifty) [![Coverage Status](https://coveralls.io/repos/github/hapipal/schwifty/badge.svg?branch=master)](https://coveralls.io/github/hapipal/schwifty?branch=master)
 
@@ -19,12 +19,12 @@ Schwifty is used to define [Joi](https://github.com/hapijs/joi)-compatible model
 // First, ensure your project includes knex, objection, and sqlite3
 
 // To get started you might run,
-// npm install --save hapi joi schwifty knex objection sqlite3
+// npm install --save schwifty @hapi/hapi @hapi/joi knex objection sqlite3
 
 'use strict';
 
-const Hapi = require('hapi');
-const Joi = require('joi');
+const Hapi = require('@hapi/hapi');
+const Joi = require('@hapi/joi');
 const Schwifty = require('schwifty');
 
 (async () => {
@@ -106,6 +106,6 @@ const Schwifty = require('schwifty');
 
 ## Extras
  - Compatible with [haute-couture](https://github.com/hapipal/haute-couture)
- - [Objection docs](http://vincit.github.io/objection.js)
- - [Knex docs](http://knexjs.org/)
+ - [Objection docs](http://vincit.github.io/objection.js/)
+ - [Knex docs](https://knexjs.org/)
  - Based on [dogwater](https://github.com/devinivy/dogwater)
