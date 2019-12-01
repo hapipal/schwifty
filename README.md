@@ -11,7 +11,9 @@ Lead Maintainer - [Devin Ivy](https://github.com/devinivy)
 
 Schwifty is used to define [Joi](https://github.com/hapijs/joi)-compatible models and knex connections for use with Objection ORM.  Those models then become available within your hapi server where it is most convenient.  It has been tailored to multi-plugin deployments, where each plugin may set clear boundaries in defining its own models, knex database connections, and migrations.  It's safe to register schwifty multiple times, wherever you'd like to use it, as it protects against model name collisions and other ambiguous configurations.
 
-> Note, this library is intended to work with **hapi v17+** and **Objection v1** (see `peerDependencies` in our package.json).
+> **Note**
+>
+> Schwifty is intended for use with hapi v17+, joi v14 and v15, Objection v1 and v2, knex v0.8+, and nodejs v8+.
 >
 > Schwifty v4 introduced compatibility with Objection v1.  If you prefer or need to work with earlier versions of Objection, checkout Schwifty v3 instead!
 
