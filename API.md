@@ -6,7 +6,7 @@ Schwifty may be registered multiple times—it should be registered in any plugi
 Schwifty takes the following registration options,
 
   - `knex` - a knex instance or [configuration](http://knexjs.org/#Installation-client).  It may only be specified once per plugin/server.
-  - `models` - an array of objection or [schwifty model classes](#schwiftymodel).  May also be a path to a module that exports such an array—either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.
+  - `models` - an array of objection or [schwifty model classes](#schwiftymodel).
   - `migrationsDir` - specifies a directory of knex migrations.  The directory path may be either absolute, relative to the server's [path prefix](https://github.com/hapijs/hapi/blob/master/API.md#server.path()) when set, or otherwise relative to the current working directory.  It may only be specified once per plugin/server.
   - `migrateOnStart` - a boolean, `'latest'`, or `'rollback'`, to determine how to handle [knex migrations](http://knexjs.org/#Migrations) at server initialization time.  Defaults to `false`, which indicates to not handle migrations at all.  When `true` or `'latest'`, runs all migrations that have not been run.  When `'rollback'`, rolls-back the latest group of migrations.  It may only be specified once.
   - `teardownOnStop` - a boolean indicating whether or not all knex connections should be torn-down when the hapi server stops (after server connections are drained).  Defaults to `true`, and may only be specified once.

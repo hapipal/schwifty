@@ -71,8 +71,6 @@ describe('Schwifty', () => {
         return server;
     };
 
-    const modelsFile = './models/as-file.js';
-
     const state = (realm) => {
 
         return realm.plugins.schwifty;
@@ -235,42 +233,6 @@ describe('Schwifty', () => {
     });
 
     describe('plugin registration', () => {
-
-        it('takes `models` option as a relative path.', async () => {
-
-            const options = getOptions({ models: Path.normalize('./test/' + modelsFile) });
-            const server = await getServer(options);
-            const models = server.models();
-
-            expect(models.Dog).to.exist();
-            expect(models.Person).to.exist();
-        });
-
-        it('takes `models` option as an absolute path.', async () => {
-
-            const options = getOptions({ models: Path.normalize(__dirname + '/' + modelsFile) });
-            const server = await getServer(options);
-            const models = server.models();
-
-            expect(models.Dog).to.exist();
-            expect(models.Person).to.exist();
-        });
-
-        it('takes `models` option respecting server.path().', async () => {
-
-            const server = Hapi.server();
-            server.path(__dirname);
-
-            await server.register({
-                plugin: Schwifty,
-                options: getOptions({ models: modelsFile })
-            });
-
-            const models = server.models();
-
-            expect(models.Dog).to.exist();
-            expect(models.Person).to.exist();
-        });
 
         it('takes `models` option as an array of objects.', async () => {
 
