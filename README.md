@@ -1,6 +1,6 @@
 # schwifty
 
-A [hapi](https://hapi.dev) plugin integrating [Objection ORM](https://github.com/Vincit/objection.js/)
+A [hapi](https://hapi.dev) plugin integrating [Objection ORM](https://vincit.github.io/objection.js/)
 
 [![Build Status](https://travis-ci.org/hapipal/schwifty.svg?branch=master)](https://travis-ci.org/hapipal/schwifty) [![Coverage Status](https://coveralls.io/repos/github/hapipal/schwifty/badge.svg?branch=master)](https://coveralls.io/github/hapipal/schwifty?branch=master)
 

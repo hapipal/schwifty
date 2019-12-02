@@ -119,7 +119,7 @@ Schwifty's model class extends [`Objection.Model`](https://vincit.github.io/obje
 An optional [`Joi.object()`](https://hapi.dev/family/joi/#object) schema, where each of its keys is a field of the given model.
 
 ### `jsonAttributes`
-This property is computed as a getter using the contents of `joiSchema`.  Any of the schema's keys that are [`Joi.object()`](https://hapi.dev/family/joi/#object)s or [`Joi.array()`](https://hapi.dev/family/joi/#array)s will be included in the list of JSON attributes.  If this property is set, it will forget about having been computed.  For more info, see objection's [`jsonAttributes`](https://vincit.github.io/objection.js/api/model/static-properties.html#static-jsonattributess).
+This property is computed as a getter using the contents of `joiSchema`.  Any of the schema's keys that are [`Joi.object()`](https://hapi.dev/family/joi/#object)s or [`Joi.array()`](https://hapi.dev/family/joi/#array)s will be included in the list of JSON attributes.  If this property is set, it will forget about having been computed.  For more info, see objection's [`jsonAttributes`](https://vincit.github.io/objection.js/api/model/static-properties.html#static-jsonattributes).
 
 ### `getJoiSchema([patch])`
 Returns the [`joiSchema`](#joischema) and memoizes the result.  This is useful when `joiSchema` is defined as a getter, but you'd like to avoid constantly recompiling the schema when accessing it.  Past memoization is forgotten by extended classes.  When `patch` is `true`, the same schema is returned (and memoized separately), but set so that it ignores default values and missing required fields.
