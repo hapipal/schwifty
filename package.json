@@ -27,7 +27,7 @@
   ],
   "dependencies": {
     "@hapi/hoek": "8.x.x",
-    "@hapi/joi": "15.x.x",
+    "@hapi/joi": "16.x.x",
     "tmp": "0.1.x",
     "toys": "2.x.x"
   },
