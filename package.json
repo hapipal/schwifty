@@ -20,6 +20,7 @@
   },
   "keywords": [
     "hapi",
+    "joi",
     "plugin",
     "objection",
     "database",
@@ -33,7 +34,7 @@
   },
   "peerDependencies": {
     "@hapi/hapi": ">=17 <19",
-    "@hapi/joi": ">=14 <16",
+    "@hapi/joi": ">=16",
     "knex": ">=0.8",
     "objection": ">=1 <3"
   },
