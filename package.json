@@ -20,6 +20,7 @@
   },
   "keywords": [
     "hapi",
+    "joi",
     "plugin",
     "objection",
     "database",
@@ -27,14 +28,13 @@
   ],
   "dependencies": {
     "@hapi/hoek": "8.x.x",
-    "@hapi/joi": "15.x.x",
-    "tmp": "0.1.x",
+    "@hapi/joi": "16.x.x",
     "toys": "2.x.x"
   },
   "peerDependencies": {
     "@hapi/hapi": ">=17 <19",
-    "@hapi/joi": ">=14 <16",
-    "knex": ">=0.8",
+    "@hapi/joi": ">=16",
+    "knex": ">=0.16",
     "objection": ">=1 <3"
   },
   "devDependencies": {

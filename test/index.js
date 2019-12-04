@@ -5,7 +5,6 @@
 const Fs = require('fs');
 const Path = require('path');
 const Util = require('util');
-const Tmp = require('tmp');
 const Lab = require('@hapi/lab');
 const Code = require('@hapi/code');
 const Hapi = require('@hapi/hapi');
@@ -71,8 +70,6 @@ describe('Schwifty', () => {
 
         return server;
     };
-
-    const modelsFile = './models/as-file.js';
 
     const state = (realm) => {
 
@@ -236,42 +233,6 @@ describe('Schwifty', () => {
     });
 
     describe('plugin registration', () => {
-
-        it('takes `models` option as a relative path.', async () => {
-
-            const options = getOptions({ models: Path.normalize('./test/' + modelsFile) });
-            const server = await getServer(options);
-            const models = server.models();
-
-            expect(models.Dog).to.exist();
-            expect(models.Person).to.exist();
-        });
-
-        it('takes `models` option as an absolute path.', async () => {
-
-            const options = getOptions({ models: Path.normalize(__dirname + '/' + modelsFile) });
-            const server = await getServer(options);
-            const models = server.models();
-
-            expect(models.Dog).to.exist();
-            expect(models.Person).to.exist();
-        });
-
-        it('takes `models` option respecting server.path().', async () => {
-
-            const server = Hapi.server();
-            server.path(__dirname);
-
-            await server.register({
-                plugin: Schwifty,
-                options: getOptions({ models: modelsFile })
-            });
-
-            const models = server.models();
-
-            expect(models.Dog).to.exist();
-            expect(models.Person).to.exist();
-        });
 
         it('takes `models` option as an array of objects.', async () => {
 
@@ -471,7 +432,7 @@ describe('Schwifty', () => {
                     expect(() => {
 
                         srv.schwifty({ invalidProp: 'bad' });
-                    }).to.throw(/\"invalidProp\" is not allowed/);
+                    }).to.throw(/\"value\" does not match any of the allowed types/);
                 }
             };
 
@@ -996,51 +957,6 @@ describe('Schwifty', () => {
 
             // If 2nd-bad had run, that would be the current version due to sort order
             expect(version).to.equal('1st-good.js');
-        });
-
-        it('bails when failing to make a temp migrations directory.', async () => {
-
-            const server = await getServer(getOptions({
-                migrationsDir: './test/migrations/basic',
-                migrateOnStart: true
-            }));
-
-            // Monkey-patches Tmp.dir to simulate an error in that method
-            const origTmpDir = Tmp.dir;
-            Tmp.dir = (opts, cb) => {
-
-                // Reverts Tmp.dir back to its original definition, so subsequent tests use the normal function
-                Tmp.dir = origTmpDir;
-                cb(new Error('Generating temp dir failed.'));
-            };
-
-            // We expect server initialization to fail with the simulated Tmp error message
-            await expect(server.initialize()).to.reject('Generating temp dir failed.');
-
-            const version = await server.knex().migrate.currentVersion();
-            expect(version).to.equal('none');
-        });
-
-        it('bails when failing to read a migrations directory.', async () => {
-
-            const server = await getServer(getOptions({
-                migrationsDir: './test/migrations/basic',
-                migrateOnStart: true
-            }));
-
-            // Monkey-patches Fs.readdir to simulate an error in that method
-            const origReaddir = Fs.readdir;
-            Fs.readdir = (opts, cb) => {
-
-                // Reverts Fs.readdir back to its original definition, so subsequent tests use the normal function
-                Fs.readdir = origReaddir;
-                cb(new Error('Reading migrations dir failed.'));
-            };
-
-            await expect(server.initialize()).to.reject('Reading migrations dir failed.');
-
-            const version = await server.knex().migrate.currentVersion();
-            expect(version).to.equal('none');
         });
     });
 
@@ -1580,7 +1496,7 @@ describe('Schwifty', () => {
                     }
                 };
 
-                const keysOf = (schema) => Object.keys(schema.describe().children || {});
+                const keysOf = (schema) => Object.keys(schema.describe().keys || {});
 
                 expect(keysOf(ModelOne.getJoiSchema())).to.only.include(['a']);
                 expect(keysOf(ModelOne.getJoiSchema(true))).to.only.include(['a']);
