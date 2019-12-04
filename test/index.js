@@ -432,7 +432,7 @@ describe('Schwifty', () => {
                     expect(() => {
 
                         srv.schwifty({ invalidProp: 'bad' });
-                    }).to.throw(/\"invalidProp\" is not allowed/);
+                    }).to.throw(/\"value\" does not match any of the allowed types/);
                 }
             };
 
@@ -1541,7 +1541,7 @@ describe('Schwifty', () => {
                     }
                 };
 
-                const keysOf = (schema) => Object.keys(schema.describe().children || {});
+                const keysOf = (schema) => Object.keys(schema.describe().keys || {});
 
                 expect(keysOf(ModelOne.getJoiSchema())).to.only.include(['a']);
                 expect(keysOf(ModelOne.getJoiSchema(true))).to.only.include(['a']);
