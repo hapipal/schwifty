@@ -2,7 +2,7 @@
 
 > **Note**
 >
-> Schwifty is intended for use with hapi v17+, joi v16+, Objection v1 and v2, knex v0.8+, and nodejs v8+.
+> Schwifty is intended for use with hapi v17+, joi v16+, Objection v1 and v2, knex v0.16+, and nodejs v8+.
 
 ## The hapi plugin
 ### Registration
