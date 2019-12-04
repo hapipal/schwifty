@@ -13,7 +13,7 @@ Schwifty is used to define [Joi](https://github.com/hapijs/joi)-compatible model
 
 > **Note**
 >
-> Schwifty is intended for use with hapi v17+, joi v16+, Objection v1 and v2, knex v0.16+, and nodejs v8+.
+> Schwifty is intended for use with hapi v17+, joi v16+, Objection v1 and v2, knex v0.16+, and nodejs v8+.  If you're using an older version of knex or joi, check out schwifty v4.
 
 ```js
 // First, ensure your project includes knex, objection, and sqlite3
