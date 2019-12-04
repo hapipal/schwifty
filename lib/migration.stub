@@ -1,0 +1,17 @@
+'use strict';
+
+exports.up = async (knex) => {
+    <% if (d.tableName) { %>
+    await knex.schema.createTable('<%= d.tableName %>', (t) => {
+
+        t.increments();
+        t.timestamp();
+    });
+    <% } %>
+};
+
+exports.down = async (knex) => {
+    <% if (d.tableName) { %>
+    await knex.schema.dropTable('<%= d.tableName %>');
+    <% } %>
+};

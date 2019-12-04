@@ -4,6 +4,7 @@
 
 const Fs = require('fs');
 const Path = require('path');
+const Util = require('util');
 const Tmp = require('tmp');
 const Lab = require('@hapi/lab');
 const Code = require('@hapi/code');
@@ -1762,6 +1763,20 @@ describe('Schwifty', () => {
 
             expect(() => Schwifty.assertCompatible(ModelA, ModelB)).to.not.throw();
             expect(() => Schwifty.assertCompatible(ModelB, ModelA)).to.not.throw();
+        });
+    });
+
+    describe('migrationsStubPath', () => {
+
+        it('is the path of a hapi-friendly knex stub file.', async () => {
+
+            const readFile = Util.promisify(Fs.readFile);
+
+            const contents = (await readFile(Schwifty.migrationsStubPath)).toString();
+
+            expect(contents).to.startWith('\'use strict\';');
+            expect(contents).to.contain('exports.up = async (knex) => {');
+            expect(contents).to.contain('exports.down = async (knex) => {');
         });
     });
 

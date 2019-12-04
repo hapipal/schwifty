@@ -130,3 +130,18 @@ Validates the model instance using its [`joiSchema`](#joischema).  This is imple
 ## Utilities
 ### `Schwifty.assertCompatible(ModelA, ModelB, [message])`
 Ensures that `ModelA` and `ModelB` have the same class `name`, share the same `tableName`, and that one model extends the other, otherwise throws an error.  When `message` is provided, it will be used as the message for any thrown error.
+
+### `Schwifty.migrationsStubPath`
+A path to a knex migrations stub file that utilizes async/await and is set to follow the hapi style guide.  This is intended to be used with [knexfile](https://knexjs.org/#knexfile) configurations (as of knex v0.18.4) and the [`knex migrate:make`](https://knexjs.org/#Migrations-CLI) command:
+
+```js
+// knexfile.js
+const Schwifty = require('schwifty');
+
+module.exports = {
+    client: 'pg',
+    migrations: {
+        stub: Schwifty.migrationsStubPath
+    }
+};
+```
