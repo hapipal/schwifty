@@ -1513,6 +1513,96 @@ describe('Schwifty', () => {
             });
         });
 
+        describe('static method field(name)', () => {
+
+            it('tailors a patch version of the field validation by default.', () => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            a: Joi.string().min(3),
+                            b: Joi.string().default('b'),
+                            c: Joi.string().required()
+                        });
+                    }
+                };
+
+                const a = Model.field('a');
+                const b = Model.field('b');
+                const c = Model.field('c');
+
+                expect(a.validate('123')).to.equal({ value: '123' });
+                expect(a.validate('12')).to.contain('error');
+
+                expect(b.validate()).to.equal({ value: undefined });
+                expect(b.validate('x')).to.equal({ value: 'x' });
+                expect(b.validate(1)).to.contain('error');
+
+                expect(c.validate()).to.equal({ value: undefined });
+                expect(c.validate('x')).to.equal({ value: 'x' });
+                expect(c.validate(1)).to.contain('error');
+            });
+
+            it('has a no-op "patch" schema alteration.', () => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            a: Joi.string().min(3),
+                            b: Joi.string().default('b'),
+                            c: Joi.string().required()
+                        });
+                    }
+                };
+
+                const a = Model.field('a').tailor('patch');
+                const b = Model.field('b').tailor('patch');
+                const c = Model.field('c').tailor('patch');
+
+                expect(a.validate('123')).to.equal({ value: '123' });
+                expect(a.validate('12')).to.contain('error');
+
+                expect(b.validate()).to.equal({ value: undefined });
+                expect(b.validate('x')).to.equal({ value: 'x' });
+                expect(b.validate(1)).to.contain('error');
+
+                expect(c.validate()).to.equal({ value: undefined });
+                expect(c.validate('x')).to.equal({ value: 'x' });
+                expect(c.validate(1)).to.contain('error');
+            });
+
+            it('has a "full" schema alteration.', () => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            a: Joi.string().min(3),
+                            b: Joi.string().default('b'),
+                            c: Joi.string().required()
+                        });
+                    }
+                };
+
+                const a = Model.field('a').tailor('full');
+                const b = Model.field('b').tailor('full');
+                const c = Model.field('c').tailor('full');
+
+                expect(a.validate('123')).to.equal({ value: '123' });
+                expect(a.validate('12')).to.contain('error');
+
+                expect(b.validate()).to.equal({ value: 'b' });
+                expect(b.validate('x')).to.equal({ value: 'x' });
+                expect(b.validate(1)).to.contain('error');
+
+                expect(c.validate()).to.contain('error');
+                expect(c.validate('x')).to.equal({ value: 'x' });
+                expect(c.validate(1)).to.contain('error');
+            });
+        });
+
         describe('static getter jsonAttributes', () => {
 
             it('lists attributes that are specified as Joi objects or arrays.', () => {

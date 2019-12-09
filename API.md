@@ -124,6 +124,32 @@ This property is computed as a getter using the contents of `joiSchema`.  Any of
 ### `getJoiSchema([patch])`
 Returns the [`joiSchema`](#joischema) and memoizes the result.  This is useful when `joiSchema` is defined as a getter, but you'd like to avoid constantly recompiling the schema when accessing it.  Past memoization is forgotten by extended classes.  When `patch` is `true`, the same schema is returned (and memoized separately), but set so that it ignores default values and missing required fields.
 
+### `field(name)`
+Returns the schema for the field named `name` on the model's [`joiSchema`](#joischema), but marked as optional and ignoring defaults.  The schema also has two [alterations](https://hapi.dev/family/joi/#anyaltertargets): one named `'full'` which respects defaults and required/optional/forbidden status, and another named `'patch'` which does nothing but exists to allow for explicitness.
+
+```js
+const User = class User extends Schwifty.Model {
+    static joiSchema = Joi.object({
+        username: Joi.string().min(4).required()
+    })
+};
+
+// no alteration
+User.field('username').validate();        // { value: undefined }
+User.field('username').validate('pal');   // { error }, as username must be at least 4 characters
+User.field('username').validate('paldo'); // { value: 'paldo' }
+
+// "patch" alteration: identical to the above
+User.field('username').tailor('patch').validate();
+User.field('username').tailor('patch').validate('pal');
+User.field('username').tailor('patch').validate('paldo');
+
+// "full" alteration
+User.field('username').tailor('full').validate();         // { error }, as username is required
+User.field('username').tailor('full').validate('pal');    // { error }, as username must be at least 4 characters
+User.field('username').tailor('full').validate('paldo');  // { value: 'paldo' }
+```
+
 ### `model.$validate()`
 Validates the model instance using its [`joiSchema`](#joischema).  This is implemented using objection's [`Validator`](https://vincit.github.io/objection.js/api/types/#class-validator) interface.
 
