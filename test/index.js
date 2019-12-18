@@ -1513,6 +1513,164 @@ describe('Schwifty', () => {
             });
         });
 
+        describe('static method field(name)', () => {
+
+            it('tailors a patch version of the field validation by default.', () => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            a: Joi.string().min(3),
+                            b: Joi.string().default('b'),
+                            c: Joi.string().required()
+                        });
+                    }
+                };
+
+                const a = Model.field('a');
+                const b = Model.field('b');
+                const c = Model.field('c');
+
+                expect(a.validate('123')).to.equal({ value: '123' });
+                expect(a.validate('12')).to.contain('error');
+
+                expect(b.validate()).to.equal({ value: undefined });
+                expect(b.validate('x')).to.equal({ value: 'x' });
+                expect(b.validate(1)).to.contain('error');
+
+                expect(c.validate()).to.equal({ value: undefined });
+                expect(c.validate('x')).to.equal({ value: 'x' });
+                expect(c.validate(1)).to.contain('error');
+            });
+
+            it('has a no-op "patch" schema alteration.', () => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            a: Joi.string().min(3),
+                            b: Joi.string().default('b'),
+                            c: Joi.string().required()
+                        });
+                    }
+                };
+
+                const a = Model.field('a').tailor('patch');
+                const b = Model.field('b').tailor('patch');
+                const c = Model.field('c').tailor('patch');
+
+                expect(a.validate('123')).to.equal({ value: '123' });
+                expect(a.validate('12')).to.contain('error');
+
+                expect(b.validate()).to.equal({ value: undefined });
+                expect(b.validate('x')).to.equal({ value: 'x' });
+                expect(b.validate(1)).to.contain('error');
+
+                expect(c.validate()).to.equal({ value: undefined });
+                expect(c.validate('x')).to.equal({ value: 'x' });
+                expect(c.validate(1)).to.contain('error');
+            });
+
+            it('has a "full" schema alteration.', () => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            a: Joi.string().min(3),
+                            b: Joi.string().default('b'),
+                            c: Joi.string().required()
+                        });
+                    }
+                };
+
+                const a = Model.field('a').tailor('full');
+                const b = Model.field('b').tailor('full');
+                const c = Model.field('c').tailor('full');
+
+                expect(a.validate('123')).to.equal({ value: '123' });
+                expect(a.validate('12')).to.contain('error');
+
+                expect(b.validate()).to.equal({ value: 'b' });
+                expect(b.validate('x')).to.equal({ value: 'x' });
+                expect(b.validate(1)).to.contain('error');
+
+                expect(c.validate()).to.contain('error');
+                expect(c.validate('x')).to.equal({ value: 'x' });
+                expect(c.validate(1)).to.contain('error');
+            });
+
+            it('supports nested properties.', () => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            a: Joi.object({
+                                d: Joi.string().min(3),
+                                e: Joi.string().default('e')
+                            }),
+                            b: Joi.string().default('b'),
+                            c: Joi.string().required()
+                        });
+                    }
+                };
+
+                const d = Model.field('a.d');
+                const e = Model.field('a.e');
+
+                const dfull = Model.field('a.d').tailor('full');
+                const efull = Model.field('a.e').tailor('full');
+
+                expect(d.validate('123')).to.equal({ value: '123' });
+                expect(d.validate('12')).to.contain('error');
+
+                expect(e.validate()).to.equal({ value: undefined });
+                expect(e.validate('x')).to.equal({ value: 'x' });
+                expect(e.validate(1)).to.contain('error');
+
+                expect(dfull.validate('123')).to.equal({ value: '123' });
+                expect(dfull.validate('12')).to.contain('error');
+
+                expect(efull.validate()).to.equal({ value: 'e' });
+                expect(efull.validate('x')).to.equal({ value: 'x' });
+                expect(efull.validate(1)).to.contain('error');
+            });
+
+            it('validation throws when the schema contains an invalid ref.', () => {
+
+                const Model = class extends Schwifty.Model {
+                    static get joiSchema() {
+
+                        return Joi.object({
+                            a: Joi.number(),
+                            b: Joi.number(),
+                            c: Joi.ref('a'),
+                            d: Joi.expression('{b * a}')
+                        });
+                    }
+                };
+
+                const a = Model.field('a');
+                const b = Model.field('b');
+                const c = Model.field('c');
+                const d = Model.field('d');
+
+                expect(a.validate(5)).to.equal({ value: 5 });
+                expect(b.validate(6)).to.equal({ value: 6 });
+                expect(() => c.validate(5)).to.throw('Invalid reference exceeds the schema root: ref:a');
+                expect(() => d.validate(30)).to.throw('Invalid reference exceeds the schema root: ref:b');
+
+                const schema = Joi.object({
+                    a: Joi.string(),
+                    c
+                });
+                expect(schema.validate({ a: '123', c: '123' })).to.equal({ value: { a: '123', c: '123' } });
+            });
+        });
+
         describe('static getter jsonAttributes', () => {
 
             it('lists attributes that are specified as Joi objects or arrays.', () => {
