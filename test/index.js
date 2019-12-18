@@ -1602,7 +1602,7 @@ describe('Schwifty', () => {
                 expect(c.validate(1)).to.contain('error');
             });
 
-            it('supports nested properties', () => {
+            it('supports nested properties.', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1639,7 +1639,7 @@ describe('Schwifty', () => {
                 expect(efull.validate(1)).to.contain('error');
             });
 
-            it('throws when called on a field whose schema contains a ref', () => {
+            it('validation throws when the schema contains an invalid ref', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
@@ -1662,6 +1662,12 @@ describe('Schwifty', () => {
                 expect(b.validate(6)).to.equal({ value: 6 });
                 expect(() => c.validate(5)).to.throw('Invalid reference exceeds the schema root: ref:a');
                 expect(() => d.validate(30)).to.throw('Invalid reference exceeds the schema root: ref:b');
+
+                const schema = Joi.object({
+                    a: Joi.string(),
+                    c
+                });
+                expect(schema.validate({ a: '123', c: '123' })).to.equal({ value: { a: '123', c: '123' } });
             });
         });
 
