@@ -1639,7 +1639,7 @@ describe('Schwifty', () => {
                 expect(efull.validate(1)).to.contain('error');
             });
 
-            it('validation throws when the schema contains an invalid ref', () => {
+            it('validation throws when the schema contains an invalid ref.', () => {
 
                 const Model = class extends Schwifty.Model {
                     static get joiSchema() {
