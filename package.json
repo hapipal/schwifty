@@ -32,7 +32,7 @@
     "toys": "2.x.x"
   },
   "peerDependencies": {
-    "@hapi/hapi": ">=17 <19",
+    "@hapi/hapi": ">=17 <20",
     "@hapi/joi": ">=16",
     "knex": ">=0.16",
     "objection": ">=1 <3"
