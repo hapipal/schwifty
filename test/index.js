@@ -7,13 +7,15 @@ const Path = require('path');
 const Util = require('util');
 const Lab = require('@hapi/lab');
 const Code = require('@hapi/code');
-const Hapi = require('@hapi/hapi');
+const Somever = require('@hapi/somever');
 const Joi = require('@hapi/joi');
 const Hoek = require('@hapi/hoek');
 const Objection = require('objection');
 const Knex = require('knex');
 const TestModels = require('./models');
 const Schwifty = require('..');
+
+const Hapi = Somever.match('>=12', process.version) ? require('@hapi/hapi-19') : require('@hapi/hapi');
 
 // Test shortcuts
 
