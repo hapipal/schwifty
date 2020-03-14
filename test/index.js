@@ -10,6 +10,8 @@ const Code = require('@hapi/code');
 const Somever = require('@hapi/somever');
 const Joi = require('@hapi/joi');
 const Hoek = require('@hapi/hoek');
+const InternalHapi = require('@hapi/hapi');
+const Ahem = require('ahem');
 const Objection = require('objection');
 const Knex = require('knex');
 const TestModels = require('./models');
@@ -19,11 +21,8 @@ const Hapi = Somever.match(process.version, '>=12') ? require('@hapi/hapi-19') :
 
 // Test shortcuts
 
-const lab = exports.lab = Lab.script();
+const { describe, it, before, after } = exports.lab = Lab.script();
 const expect = Code.expect;
-const describe = lab.describe;
-const before = lab.before;
-const it = lab.it;
 
 describe('Schwifty', () => {
 
@@ -89,10 +88,21 @@ describe('Schwifty', () => {
         return realm;
     };
 
+    const getPlugin = async (server, name, others) => {
+
+        const register = () => null;
+
+        return await Ahem.instance(server, { name, register, ...others }, {}, { controlled: false });
+    };
+
     before(() => {
 
         require('sqlite3'); // Just warm-up sqlite, so that the tests have consistent timing
+
+        Ahem._setHapi(Hapi);
     });
+
+    after(() => Ahem._setHapi(InternalHapi));
 
     it('connects models to knex instance during onPreStart.', async () => {
 
@@ -441,6 +451,54 @@ describe('Schwifty', () => {
             await server.register(plugin);
         });
 
+        it('sandboxes services in the current plugin when using Schmervice.sandbox symbol.', async () => {
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            server.schwifty(class ModelA extends Schwifty.Model {});
+
+            const plugin = await getPlugin(server, 'plugin');
+
+            plugin.schwifty(class ModelA extends Schwifty.Model {
+                static get [Schwifty.sandbox]() {
+
+                    return true;
+                }
+            });
+
+            plugin.schwifty(class ModelB extends Schwifty.Model {
+                static get [Schwifty.sandbox]() {
+
+                    return 'plugin';
+                }
+            });
+
+            plugin.schwifty(class ModelC extends Schwifty.Model {
+                static get [Schwifty.sandbox]() {
+
+                    return true;
+                }
+            });
+
+            plugin.schwifty(class ModelD extends Schwifty.Model {
+                static get [Schwifty.sandbox]() {
+
+                    return false;
+                }
+            });
+
+            plugin.schwifty(class ModelE extends Schwifty.Model {
+                static get [Schwifty.sandbox]() {
+
+                    return 'server';
+                }
+            });
+
+            expect(server.models()).to.only.contain(['ModelA', 'ModelD', 'ModelE']);
+            expect(plugin.models()).to.only.contain(['ModelA', 'ModelB', 'ModelC', 'ModelD', 'ModelE']);
+        });
+
         it('throws on model name collision.', async () => {
 
             const server = await getServer(getOptions({
@@ -608,11 +666,21 @@ describe('Schwifty', () => {
             const knex = makeKnex();
             const server = await getServer({ knex, models: [TestModels.Person] });
 
+            const plugin = await getPlugin(server, 'plugin');
+            plugin.schwifty(class Dog extends TestModels.Dog {
+                static get [Schwifty.sandbox]() {
+
+                    return true;
+                }
+            });
+
             expect(server.models().Person.knex()).to.not.exist();
+            expect(plugin.models().Dog.knex()).to.not.exist();
 
             await server.initialize();
 
             expect(server.models().Person.knex()).to.shallow.equal(knex);
+            expect(plugin.models().Dog.knex()).to.shallow.equal(knex);
         });
 
         it('binds root knex instance to plugins\' models by default.', async () => {
@@ -1858,7 +1926,7 @@ describe('Schwifty', () => {
 
     describe('ownership', () => {
 
-        it('of models applies to server\'s realm and its ancestors.', async () => {
+        it('of models applies to server\'s realm and its ancestors while respecting sandboxing.', async () => {
 
             const makePlugin = (name, models, plugins) => ({
                 name,
@@ -1871,6 +1939,13 @@ describe('Schwifty', () => {
             });
 
             const ModelO = class ModelO extends Schwifty.Model {};
+            // eslint-disable-next-line no-shadow
+            const ModelOp = class ModelO extends Schwifty.Model {
+                static get [Schwifty.sandbox]() {
+
+                    return true;
+                }
+            };
             const ModelA1 = class ModelA1 extends Schwifty.Model {};
             const ModelA1a = class ModelA1a extends Schwifty.Model {};
             const ModelA1b = class ModelA1b extends Schwifty.Model {};
@@ -1881,7 +1956,7 @@ describe('Schwifty', () => {
             await server.register(Schwifty);
 
             const pluginX1a = makePlugin('pluginX1a', [], []);
-            const pluginX1 = makePlugin('pluginX1', [ModelX1a], [pluginX1a]);
+            const pluginX1 = makePlugin('pluginX1', [ModelOp, ModelX1a], [pluginX1a]);
             const pluginX = makePlugin('pluginX', [], [pluginX1]);
             const pluginA1 = makePlugin('pluginA1', [ModelA1a, ModelA1b], []);
             const pluginA = makePlugin('pluginA', [ModelA1, ModelA2], [pluginA1, pluginX]);
@@ -1898,35 +1973,46 @@ describe('Schwifty', () => {
                 pluginA: A
             } = server.plugins;
 
-            expect(X1a.models()).to.equal({});
-            expect(X1.models()).to.only.contain([
-                'ModelX1a'
-            ]);
-            expect(X.models()).to.only.contain([
-                'ModelX1a'
-            ]);
-            expect(A1.models()).to.only.contain([
-                'ModelA1a',
-                'ModelA1b'
-            ]);
-            expect(A.models()).to.only.contain([
-                'ModelA1',
-                'ModelA1a',
-                'ModelA1b',
-                'ModelA2',
-                'ModelX1a'
-            ]);
-            expect(server.models()).to.only.contain([
-                'ModelO',
-                'ModelA1',
-                'ModelA1a',
-                'ModelA1b',
-                'ModelA2',
-                'ModelX1a'
-            ]);
+            const checkOwnership = () => {
+
+                expect(X1a.models()).to.equal({});
+                expect(X1.models()).to.only.contain([
+                    'ModelO',
+                    'ModelX1a'
+                ]);
+                expect(X.models()).to.only.contain([
+                    'ModelX1a'
+                ]);
+                expect(A1.models()).to.only.contain([
+                    'ModelA1a',
+                    'ModelA1b'
+                ]);
+                expect(A.models()).to.only.contain([
+                    'ModelA1',
+                    'ModelA1a',
+                    'ModelA1b',
+                    'ModelA2',
+                    'ModelX1a'
+                ]);
+                expect(server.models()).to.only.contain([
+                    'ModelO',
+                    'ModelA1',
+                    'ModelA1a',
+                    'ModelA1b',
+                    'ModelA2',
+                    'ModelX1a'
+                ]);
+            };
+
+            checkOwnership();
+
+            await server.initialize();
+
+            // Checking after initialization because models are re-assigned after binding knex
+            checkOwnership();
         });
 
-        it('of knex applies to server\'s realm and its children.', async () => {
+        it('of knex applies to server\'s realm and its children while respecting sandboxing.', async () => {
 
             const makePlugin = (name, models, knex, plugins) => ({
                 name,
@@ -1960,12 +2046,14 @@ describe('Schwifty', () => {
 
             const knex1 = makeKnex();
             const knex2 = makeKnex();
+            const knex3 = makeKnex();
+            knex3[Schwifty.sandbox] = true;
 
             const server = Hapi.server();
             await server.register(Schwifty);
 
             const pluginX1a = makePlugin('pluginX1a', [], undefined, []);
-            const pluginX1 = makePlugin('pluginX1', [ModelX1a], undefined, [pluginX1a]);
+            const pluginX1 = makePlugin('pluginX1', [ModelX1a], knex3, [pluginX1a]);
             const pluginX = makePlugin('pluginX', [], knex1, [pluginX1]);
             const pluginA1 = makePlugin('pluginA1', [ModelA1a, ModelA1b], undefined, []);
             const pluginA = makePlugin('pluginA', [ModelA1, ModelA2], knex2, [pluginA1, pluginX]);
@@ -1983,7 +2071,7 @@ describe('Schwifty', () => {
             } = server.plugins;
 
             expect(X1a.knex()).to.shallow.equal(knex1);
-            expect(X1.knex()).to.shallow.equal(knex1);
+            expect(X1.knex()).to.shallow.equal(knex3);
             expect(X.knex()).to.shallow.equal(knex1);
             expect(A1.knex()).to.shallow.equal(knex2);
             expect(A.knex()).to.shallow.equal(knex2);
@@ -2005,7 +2093,7 @@ describe('Schwifty', () => {
             expect(BoundModelA1a.knex()).to.shallow.equal(knex2);
             expect(BoundModelA1b.knex()).to.shallow.equal(knex2);
             expect(BoundModelA2.knex()).to.shallow.equal(knex2);
-            expect(BoundModelX1a.knex()).to.shallow.equal(knex1);
+            expect(BoundModelX1a.knex()).to.shallow.equal(knex3);
         });
     });
 });
