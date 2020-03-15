@@ -95,6 +95,20 @@ describe('Schwifty', () => {
         return await Ahem.instance(server, { name, register, ...others }, {}, { controlled: false });
     };
 
+    const sandbox = (Model) => {
+
+        return class extends Model {
+            static get name() {
+
+                return Model.name;
+            }
+            static get [Schwifty.sandbox]() {
+
+                return true;
+            }
+        };
+    };
+
     before(() => {
 
         require('sqlite3'); // Just warm-up sqlite, so that the tests have consistent timing
@@ -517,6 +531,38 @@ describe('Schwifty', () => {
             };
 
             await expect(server.register(plugin)).to.reject('Model "Dog" has already been registered.');
+        });
+
+        it('throws when two sandboxed models with the same name are registered in the same namespace.', async () => {
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            const myPlugin = await getPlugin(server, 'my-plugin');
+
+            myPlugin.schwifty(sandbox(TestModels.Dog));
+
+            expect(() => {
+
+                myPlugin.schwifty(sandbox(TestModels.Dog));
+            }).to.throw('A model named "Dog" has already been registered in plugin namespace "my-plugin".');
+        });
+
+        it('throws when a non-sanboxed model shadows a sandboxed model of the same name.', async () => {
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            const myPlugin = await getPlugin(server, 'my-plugin');
+
+            myPlugin.schwifty(sandbox(TestModels.Dog));
+
+            const myOtherPlugin = await getPlugin(myPlugin, 'my-other-plugin');
+
+            expect(() => {
+
+                myOtherPlugin.schwifty(TestModels.Dog);
+            }).to.throw('A model named "Dog" has already been registered in plugin namespace "my-plugin".');
         });
 
         it('throws when multiple knex instances passed to same plugin.', async () => {
