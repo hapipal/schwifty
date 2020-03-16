@@ -703,6 +703,91 @@ describe('Schwifty', () => {
             const res = await server.inject('/plugin');
             expect(res.result).to.equal({ ok: true });
         });
+
+        it('returns knex instance associated with root namespace when passed true.', async () => {
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            const knex1 = makeKnex();
+            const knex2 = makeKnex();
+
+            server.schwifty({ knex: knex1 });
+
+            const pluginA = await getPlugin(server, 'a');
+            const pluginB = await getPlugin(pluginA, 'b');
+
+            pluginA.schwifty({ knex: knex2 });
+
+            expect(server.knex(true)).to.shallow.equal(server.knex());
+            expect(pluginA.knex(true)).to.shallow.equal(server.knex());
+            expect(pluginB.knex(true)).to.shallow.equal(server.knex());
+
+            expect(server.knex()).to.shallow.equal(knex1);
+            expect(pluginA.knex()).to.shallow.equal(knex2);
+            expect(pluginB.knex()).to.shallow.equal(knex2);
+        });
+
+        it('returns knex instance associated with a plugin namespace when passed a string.', async () => {
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            const knex1 = makeKnex();
+            const knex2 = makeKnex();
+            const knex3 = Object.assign(makeKnex(), {
+                [Schwifty.sandbox]: true
+            });
+
+            server.schwifty({ knex: knex1 });
+
+            const pluginA = await getPlugin(server, 'a');
+            const pluginB = await getPlugin(pluginA, 'b');
+            const pluginC = await getPlugin(pluginB, 'c');
+
+            await pluginC.register(Schwifty); // So that the namespace is know
+
+            pluginA.schwifty({ knex: knex2 });
+            pluginB.schwifty({ knex: knex3 });
+
+            expect(server.knex('a')).to.shallow.equal(pluginA.knex());
+            expect(server.knex('b')).to.shallow.equal(pluginB.knex());
+            expect(server.knex('c')).to.shallow.equal(pluginC.knex());
+            expect(pluginA.knex('b')).to.shallow.equal(pluginB.knex());
+            expect(pluginA.knex('c')).to.shallow.equal(pluginC.knex());
+            expect(pluginB.knex('a')).to.shallow.equal(pluginA.knex());
+            expect(pluginB.knex('c')).to.shallow.equal(pluginC.knex());
+
+            expect(server.knex()).to.shallow.equal(knex1);
+            expect(pluginA.knex()).to.shallow.equal(knex2);
+            expect(pluginB.knex()).to.shallow.equal(knex3);
+            expect(pluginC.knex()).to.shallow.equal(knex2);
+        });
+
+        it('throws when accessing a namespace that doesn\'t exist.', async () => {
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            // This plugin namespace is unknown because it does not register schwifty or call server.schwifty()
+            await getPlugin(server, 'nope');
+
+            expect(() => server.knex('nope')).to.throw('The plugin namespace nope does not exist.');
+        });
+
+        it('throws when accessing a non-unique namespace.', async () => {
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            const pluginX1 = await getPlugin(server, 'x', { multiple: true });
+            pluginX1.schwifty({ knex: makeKnex() });
+
+            const pluginX2 = await getPlugin(server, 'x', { multiple: true });
+            pluginX2.schwifty({ knex: makeKnex() });
+
+            expect(() => server.models('x')).to.throw('The plugin namespace x is not unique: is that plugin registered multiple times?');
+        });
     });
 
     describe('server initialization', () => {
@@ -1378,6 +1463,53 @@ describe('Schwifty', () => {
 
             const res2 = await server.inject('/plugin');
             expect(res2.result).to.equal({ ok: 'plugin' });
+        });
+
+        it('returns models associated with a plugin namespace when passed a string.', async () => {
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            const pluginA = await getPlugin(server, 'a');
+            const pluginB = await getPlugin(pluginA, 'b');
+
+            server.schwifty(TestModels.Dog);
+            pluginA.schwifty(TestModels.Movie);
+            pluginA.schwifty(sandbox(TestModels.Person));
+            pluginB.schwifty(TestModels.Zombie);
+
+            expect(server.models()).to.shallow.equal(pluginB.models(true));
+            expect(server.models('a')).to.shallow.equal(pluginB.models('a'));
+            expect(pluginA.models('b')).to.shallow.equal(pluginB.models());
+
+            expect(server.models()).to.only.contain(['Dog', 'Movie', 'Zombie']);
+            expect(pluginA.models()).to.only.contain(['Movie', 'Person', 'Zombie']);
+            expect(pluginB.models()).to.only.contain(['Zombie']);
+        });
+
+        it('throws when accessing a namespace that doesn\'t exist.', async () => {
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            // This plugin namespace is unknown because it does not register schwifty or call server.schwifty()
+            await getPlugin(server, 'nope');
+
+            expect(() => server.models('nope')).to.throw('The plugin namespace nope does not exist.');
+        });
+
+        it('throws when accessing a non-unique namespace.', async () => {
+
+            const server = Hapi.server();
+            await server.register(Schwifty);
+
+            const pluginX1 = await getPlugin(server, 'x', { multiple: true });
+            pluginX1.schwifty(TestModels.Dog);
+
+            const pluginX2 = await getPlugin(server, 'x', { multiple: true });
+            pluginX2.schwifty(TestModels.Movie);
+
+            expect(() => server.models('x')).to.throw('The plugin namespace x is not unique: is that plugin registered multiple times?');
         });
     });
 
