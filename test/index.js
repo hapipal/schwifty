@@ -912,16 +912,14 @@ describe('Schwifty', () => {
                 const knex = failKnexWith(makeKnex(), new Error());
                 const server = await getServer({ knex, models: [TestModels.Dog] });
 
-                const plugin = {
-                    name: 'plugin',
-                    register: (srv, opts) => {
+                const pluginA = await getPlugin(server, 'a');
+                const pluginB = await getPlugin(pluginA, 'b');
 
-                        srv.schwifty(TestModels.Person);
-                    }
-                };
+                pluginA.schwifty(TestModels.Person);
+                pluginB.schwifty(sandbox(TestModels.Person));
+                pluginB.schwifty(sandbox(TestModels.Zombie));
 
-                await server.register(plugin);
-                await expect(server.initialize()).to.reject(/^Could not connect to database using schwifty knex instance for models: "Dog", "Person"\./);
+                await expect(server.initialize()).to.reject('Could not connect to database using schwifty knex instance for models: "Dog", "Person", "Person" (b), "Zombie" (b).');
             });
 
             it('and doesn\'t list associated models in error when there are none.', async () => {
@@ -2028,6 +2026,45 @@ describe('Schwifty', () => {
 
                 const emptyJsonAttrs = Model.jsonAttributes = [];
                 expect(emptyJsonAttrs).to.shallow.equal(Model.$$schwiftyJsonAttributes);
+            });
+        });
+
+        describe.skip('static uniqueTag()', () => {
+
+            it('x', () => {
+
+                const sandbox = (M) => {
+                    M[Schwifty.sandbox] = true;
+                    return M;
+                };
+
+                const tableName = (M) => {
+                    M.tableName = M.name + '_table';
+                    return M;
+                };
+
+                const A = tableName(class A extends Schwifty.Model {});
+                const B = tableName(sandbox(class B extends Schwifty.Model {}));
+                const C = tableName(sandbox(class C extends Schwifty.Model {}));
+                const D = tableName(sandbox(class D extends C {}));
+
+                console.log({ Base: Schwifty.Model.$$schwiftyUniqueCounter });
+                console.log({ A: A.$$schwiftyUniqueCounter });
+                console.log({ B: B.$$schwiftyUniqueCounter });
+                console.log({ C: C.$$schwiftyUniqueCounter });
+                console.log({ D: D.$$schwiftyUniqueCounter });
+                Object.getPrototypeOf(B).$$schwiftyUniqueCounter = 11;
+
+                console.log(A.uniqueTag());
+                console.log(C.uniqueTag());
+                console.log(D.uniqueTag());
+                console.log(C.uniqueTag());
+                console.log(B.uniqueTag());
+                console.log({ Base: Schwifty.Model.$$schwiftyUniqueCounter });
+                console.log({ A: A.$$schwiftyUniqueCounter });
+                console.log({ B: B.$$schwiftyUniqueCounter });
+                console.log({ C: C.$$schwiftyUniqueCounter });
+                console.log({ D: D.$$schwiftyUniqueCounter });
             });
         });
     });
