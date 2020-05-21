@@ -143,8 +143,8 @@ describe('Schwifty', () => {
         const server = await getServer(getOptions());
         let toredown = 0;
 
-        const origDestroy = server.knex().destroy;
-        server.knex().destroy = () => {
+        const origDestroy = server.knex().context.destroy;
+        server.knex().context.destroy = () => {
 
             ++toredown;
             return origDestroy.call(server.knex());
@@ -176,8 +176,8 @@ describe('Schwifty', () => {
 
                 expect(srv.knex()).to.not.shallow.equal(server.knex());
 
-                const origDestroy = srv.knex().destroy;
-                srv.knex().destroy = () => {
+                const origDestroy = srv.knex().context.destroy;
+                srv.knex().context.destroy = () => {
 
                     ++toredown;
                     return origDestroy.call(srv.knex());
@@ -194,8 +194,8 @@ describe('Schwifty', () => {
                 // Plugin 2 will use the root server's (referenced by server variable) knex connection
                 expect(srv.knex()).to.shallow.equal(server.knex());
 
-                const origDestroy = srv.knex().destroy;
-                srv.knex().destroy = () => {
+                const origDestroy = srv.knex().context.destroy;
+                srv.knex().context.destroy = () => {
 
                     ++toredown;
                     return origDestroy.call(srv.knex());
@@ -216,8 +216,8 @@ describe('Schwifty', () => {
         const server = await getServer(options);
         let toredown = 0;
 
-        const origDestroy = server.knex().destroy;
-        server.knex().destroy = () => {
+        const origDestroy = server.knex().context.destroy;
+        server.knex().context.destroy = () => {
 
             ++toredown;
             return origDestroy.call(server.knex());
@@ -897,7 +897,7 @@ describe('Schwifty', () => {
 
             const failKnexWith = (knex, error) => {
 
-                knex.queryBuilder = () => ({
+                knex.context.queryBuilder = () => ({
                     select: () => {
 
                         throw error;
