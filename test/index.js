@@ -2029,42 +2029,116 @@ describe('Schwifty', () => {
             });
         });
 
-        describe.skip('static uniqueTag()', () => {
+        describe('static uniqueTag()', () => {
 
-            it('x', () => {
+            it('has the default behavior for non-sandboxed models.', () => {
 
-                const sandbox = (M) => {
-                    M[Schwifty.sandbox] = true;
-                    return M;
+                const ModelA = class A extends Schwifty.Model {};
+                ModelA.tableName = 'table_a';
+
+                expect(ModelA.uniqueTag()).to.equal('table_a_A');
+
+                const ModelB = class extends Schwifty.Model {
+                    static get name() {
+                        // In later node versions the class name can be inferred from the
+                        // variable, so we actually have to go out of our way to have no name.
+                        return null;
+                    }
                 };
+                ModelB.tableName = 'table_b';
 
-                const tableName = (M) => {
-                    M.tableName = M.name + '_table';
-                    return M;
+                expect(ModelB.uniqueTag()).to.equal('table_b');
+            });
+
+            it('is unique for sandboxed models.', () => {
+
+                const ModelA1 = class A extends Schwifty.Model {};
+                ModelA1[Schwifty.sandbox] = true;
+                ModelA1.tableName = 'table_a';
+
+                expect(ModelA1.uniqueTag()).to.equal(ModelA1.uniqueTag());
+                expect(ModelA1.uniqueTag()).to.match(/^table_a_A_id:\d+$/);
+
+                const ModelA2 = class A extends Schwifty.Model {};
+                ModelA2[Schwifty.sandbox] = true;
+                ModelA2.tableName = 'table_a';
+
+                expect(ModelA2.uniqueTag()).to.equal(ModelA2.uniqueTag());
+                expect(ModelA2.uniqueTag()).to.match(/^table_a_A_id:\d+$/);
+                expect(ModelA2.uniqueTag()).to.not.equal(ModelA1.uniqueTag());
+
+                const ModelA3 = class A extends ModelA2 {};
+
+                expect(ModelA3.uniqueTag()).to.equal(ModelA3.uniqueTag());
+                expect(ModelA3.uniqueTag()).to.match(/^table_a_A_id:\d+$/);
+                expect(ModelA3.uniqueTag()).to.not.equal(ModelA1.uniqueTag());
+                expect(ModelA3.uniqueTag()).to.not.equal(ModelA2.uniqueTag());
+
+                const ModelB1 = class extends Schwifty.Model {
+                    // In later node versions the class name can be inferred from the
+                    // variable, so we actually have to go out of our way to have no name.
+                    static get name() {
+
+                        return null;
+                    }
                 };
+                ModelB1[Schwifty.sandbox] = true;
+                ModelB1.tableName = 'table_b';
 
-                const A = tableName(class A extends Schwifty.Model {});
-                const B = tableName(sandbox(class B extends Schwifty.Model {}));
-                const C = tableName(sandbox(class C extends Schwifty.Model {}));
-                const D = tableName(sandbox(class D extends C {}));
+                expect(ModelB1.uniqueTag()).to.equal(ModelB1.uniqueTag());
+                expect(ModelB1.uniqueTag()).to.match(/^table_b_id:\d+$/);
 
-                console.log({ Base: Schwifty.Model.$$schwiftyUniqueCounter });
-                console.log({ A: A.$$schwiftyUniqueCounter });
-                console.log({ B: B.$$schwiftyUniqueCounter });
-                console.log({ C: C.$$schwiftyUniqueCounter });
-                console.log({ D: D.$$schwiftyUniqueCounter });
-                Object.getPrototypeOf(B).$$schwiftyUniqueCounter = 11;
+                const ModelB2 = class extends Schwifty.Model {
+                    static get name() {
 
-                console.log(A.uniqueTag());
-                console.log(C.uniqueTag());
-                console.log(D.uniqueTag());
-                console.log(C.uniqueTag());
-                console.log(B.uniqueTag());
-                console.log({ Base: Schwifty.Model.$$schwiftyUniqueCounter });
-                console.log({ A: A.$$schwiftyUniqueCounter });
-                console.log({ B: B.$$schwiftyUniqueCounter });
-                console.log({ C: C.$$schwiftyUniqueCounter });
-                console.log({ D: D.$$schwiftyUniqueCounter });
+                        return null;
+                    }
+                };
+                ModelB2[Schwifty.sandbox] = true;
+                ModelB2.tableName = 'table_b';
+
+                expect(ModelB2.uniqueTag()).to.equal(ModelB2.uniqueTag());
+                expect(ModelB2.uniqueTag()).to.match(/^table_b_id:\d+$/);
+                expect(ModelB2.uniqueTag()).to.not.equal(ModelB1.uniqueTag());
+            });
+
+            it('is not unique for sandboxed models created from bindKnex() or bindTransaction().', () => {
+
+                const ModelA = class A extends Schwifty.Model {};
+                ModelA[Schwifty.sandbox] = true;
+                ModelA.tableName = 'table_a';
+
+                const ModelA1 = ModelA.bindKnex(makeKnex());
+                const ModelA2 = ModelA1.bindKnex(makeKnex());
+                const ModelA3 = ModelA.bindKnex(ModelA2.knex());
+
+                expect(ModelA.uniqueTag()).to.equal(ModelA.uniqueTag());
+                expect(ModelA1.uniqueTag()).to.equal(ModelA1.uniqueTag());
+                expect(ModelA2.uniqueTag()).to.equal(ModelA2.uniqueTag());
+                expect(ModelA3.uniqueTag()).to.equal(ModelA3.uniqueTag());
+
+                expect(ModelA.uniqueTag()).to.match(/^table_a_A_id:\d+$/);
+                expect(ModelA.uniqueTag()).to.equal(ModelA1.uniqueTag());
+                expect(ModelA1.uniqueTag()).to.equal(ModelA2.uniqueTag());
+                expect(ModelA2.uniqueTag()).to.equal(ModelA3.uniqueTag());
+
+                const ModelB = class B extends Schwifty.Model {};
+                ModelB[Schwifty.sandbox] = true;
+                ModelB.tableName = 'table_b';
+
+                const ModelB1 = ModelB.bindTransaction(makeKnex());
+                const ModelB2 = ModelB1.bindTransaction(makeKnex());
+                const ModelB3 = ModelB.bindTransaction(ModelB2.knex());
+
+                expect(ModelB.uniqueTag()).to.equal(ModelB.uniqueTag());
+                expect(ModelB1.uniqueTag()).to.equal(ModelB1.uniqueTag());
+                expect(ModelB2.uniqueTag()).to.equal(ModelB2.uniqueTag());
+                expect(ModelB3.uniqueTag()).to.equal(ModelB3.uniqueTag());
+
+                expect(ModelB.uniqueTag()).to.match(/^table_b_B_id:\d+$/);
+                expect(ModelB.uniqueTag()).to.equal(ModelB1.uniqueTag());
+                expect(ModelB1.uniqueTag()).to.equal(ModelB2.uniqueTag());
+                expect(ModelB2.uniqueTag()).to.equal(ModelB3.uniqueTag());
             });
         });
     });
