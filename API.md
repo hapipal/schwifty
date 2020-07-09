@@ -117,7 +117,7 @@ Then we can say the following,
 Schwifty performs a few important routines during server initialization.
 
 #### Binding models to knex
-First, models are bound to instances of knex on a per-plugin basis.  Each model is bound to the knex instance of the plugin—under [plugin ownership of knex instances](#knex-instances)—in which the model was defined.  If a model already is bound to a knex instance prior to initialization, it will not be bound to a new one.
+First, models are bound to instances of knex on a per-plugin basis.  Each model is bound to the knex instance of the plugin—under [plugin ownership of knex instances](#knex-instances)—in which the model was defined.  If a model already is bound to a knex instance prior to initialization, it will not be bound to a new one.  Additionally, if a model's [`Schwifty.bindKnex`](#schwiftybindknex) property is `false` then it will not be bound.
 
 This means that prior to server initialization, calls to [`server.models()`](#servermodelsnamespace) will provide models that will not be bound to a knex instance (unless you've done so manually).  If you would like to perform some tasks during server initialization that rely on database-connected models, simply tell your `onPreStart` server extension to occur after schwifty, e.g.,
 ```js
@@ -207,3 +207,7 @@ A symbol that may be added as a property to a knex instance or a model in order 
 Sandboxing ensures that the object in question opts out of transitive ownership as described in ["Plugin ownership of knex instances and models"](#plugin-ownership-of-knex-instances-and-models), and in turn is only visible within the plugin where it is provided.
 
 When this property is set to `true` or `'plugin'` the object will be sandboxed. The default behavior of plugin ownership can be explicitly configured using the value `false` or `'server'`.
+
+### `Schwifty.bindKnex`
+
+A symbol that may be added as a property to a model in order to opt-out of [knex-binding during server initialization](#binding-models-to-knex).  When this property is set to `false`, a knex instance will not automatically be bound to the model.

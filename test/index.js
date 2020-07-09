@@ -814,6 +814,29 @@ describe('Schwifty', () => {
             expect(plugin.models().Dog.knex()).to.shallow.equal(knex);
         });
 
+        it('does not bind knex instance to model when Schwifty.bindKnex property is false.', async () => {
+
+            const knex = makeKnex();
+            const server = await getServer({ knex });
+
+            const plugin = await getPlugin(server, 'plugin');
+            plugin.schwifty(TestModels.Person);
+            plugin.schwifty(class Dog extends TestModels.Dog {
+                static get [Schwifty.bindKnex]() {
+
+                    return false;
+                }
+            });
+
+            expect(server.models().Person.knex()).to.not.exist();
+            expect(plugin.models().Dog.knex()).to.not.exist();
+
+            await server.initialize();
+
+            expect(server.models().Person.knex()).to.shallow.equal(knex);
+            expect(plugin.models().Dog.knex()).to.not.exist();
+        });
+
         it('binds root knex instance to plugins\' models by default.', async () => {
 
             const knex = makeKnex();
