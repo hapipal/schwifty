@@ -19,12 +19,12 @@ Schwifty is used to define [Joi](https://github.com/hapijs/joi)-compatible model
 // First, ensure your project includes knex, objection, and sqlite3
 
 // To get started you might run,
-// npm install --save schwifty @hapi/hapi @hapi/joi knex objection sqlite3
+// npm install --save schwifty @hapi/hapi joi knex objection sqlite3
 
 'use strict';
 
 const Hapi = require('@hapi/hapi');
-const Joi = require('@hapi/joi');
+const Joi = require('joi');
 const Schwifty = require('schwifty');
 
 (async () => {

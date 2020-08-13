@@ -28,12 +28,11 @@
   ],
   "dependencies": {
     "@hapi/hoek": "8.x.x",
-    "@hapi/joi": "16.x.x",
+    "joi": "17.x.x",
     "toys": "2.x.x"
   },
   "peerDependencies": {
-    "@hapi/hapi": ">=17 <20",
-    "@hapi/joi": ">=16",
+    "@hapi/hapi": ">=17 <21",
     "knex": ">=0.16",
     "objection": ">=1 <3"
   },
@@ -41,6 +40,7 @@
     "@hapi/code": "6.x.x",
     "@hapi/hapi": "18.x.x",
     "@hapi/hapi-19": "npm:@hapi/hapi@19",
+    "@hapi/hapi-20": "npm:@hapi/hapi@20",
     "@hapi/lab": "20.x.x",
     "@hapi/somever": "2.x.x",
     "ahem": "1.x.x",
