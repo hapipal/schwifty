@@ -4,7 +4,7 @@
   "description": "A hapi plugin integrating Objection ORM",
   "main": "lib/index.js",
   "scripts": {
-    "test": "lab -a @hapi/code -t 100 -L",
+    "test": "lab -a @hapi/code -t 100 -L -I \"FinalizationRegistry,WeakRef\"",
     "coveralls": "lab -r lcov | coveralls"
   },
   "repository": {
