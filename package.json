@@ -28,7 +28,7 @@
   ],
   "dependencies": {
     "@hapi/hoek": "8.x.x",
-    "@hapi/joi": "16.x.x",
+    "joi": "17.x.x",
     "toys": "2.x.x"
   },
   "peerDependencies": {
@@ -41,11 +41,11 @@
     "@hapi/code": "6.x.x",
     "@hapi/hapi": "18.x.x",
     "@hapi/hapi-20": "npm:@hapi/hapi@20",
+    "@hapi/joi": "16.x.x",
     "@hapi/lab": "20.x.x",
     "@hapi/somever": "2.x.x",
     "ahem": "1.x.x",
     "coveralls": "3.x.x",
-    "joi": "17.x.x",
     "knex": "0.20.x",
     "objection": "2.x.x",
     "sqlite3": "4.x.x"
