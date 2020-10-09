@@ -16,7 +16,7 @@
   },
   "homepage": "https://github.com/hapipal/schwifty#readme",
   "engines": {
-    "node": ">=8.x.x"
+    "node": ">=12"
   },
   "keywords": [
     "hapi",
