@@ -40,7 +40,7 @@
   "devDependencies": {
     "@hapi/code": "8.x.x",
     "@hapi/hapi": "20.x.x",
-    "@hapi/lab": "20.x.x",
+    "@hapi/lab": "24.x.x",
     "@hapi/somever": "2.x.x",
     "ahem": "1.x.x",
     "coveralls": "3.x.x",
