@@ -16,7 +16,7 @@
   },
   "homepage": "https://github.com/hapipal/schwifty#readme",
   "engines": {
-    "node": ">=8.x.x"
+    "node": ">=12"
   },
   "keywords": [
     "hapi",
@@ -27,28 +27,25 @@
     "orm"
   ],
   "dependencies": {
-    "@hapi/hoek": "8.x.x",
-    "@hapi/joi": "16.x.x",
+    "@hapi/hoek": "9.x.x",
+    "joi": "17.x.x",
     "toys": "2.x.x"
   },
   "peerDependencies": {
-    "@hapi/hapi": ">=17 <21",
-    "@hapi/joi": ">=16",
+    "@hapi/hapi": ">=19 <21",
+    "joi": ">=17 <18",
     "knex": ">=0.16",
     "objection": ">=1 <3"
   },
   "devDependencies": {
-    "@hapi/code": "6.x.x",
-    "@hapi/hapi": "18.x.x",
-    "@hapi/hapi-20": "npm:@hapi/hapi@20",
-    "@hapi/lab": "20.x.x",
-    "@hapi/somever": "2.x.x",
+    "@hapi/code": "8.x.x",
+    "@hapi/hapi": "20.x.x",
+    "@hapi/lab": "24.x.x",
     "ahem": "1.x.x",
     "coveralls": "3.x.x",
-    "joi": "17.x.x",
     "knex": "0.20.x",
     "objection": "2.x.x",
-    "sqlite3": "4.x.x"
+    "sqlite3": "5.x.x"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",
   "license": "MIT"
