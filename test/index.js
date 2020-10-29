@@ -8,33 +8,32 @@ const Util = require('util');
 const Lab = require('@hapi/lab');
 const Code = require('@hapi/code');
 const Hoek = require('@hapi/hoek');
-const InternalHapi = require('@hapi/hapi');
-const Ahem = require('ahem');
+const Hapi = require('@hapi/hapi');
+const Ahem = require('@hapipal/ahem');
 const Objection = require('objection');
 const Knex = require('knex');
 const Joi = require('joi');
 const TestModels = require('./models');
 const Schwifty = require('..');
-const Hapi = require('@hapi/hapi');
 
 // Test shortcuts
 
-const { describe, it, before, after } = exports.lab = Lab.script();
+const { describe, it, before } = exports.lab = Lab.script();
 const { expect } = Code;
 
 describe('Schwifty', () => {
 
+    const basicKnexConfig = {
+        client: 'sqlite3',
+        useNullAsDefault: true,
+        connection: {
+            filename: ':memory:'
+        }
+    };
+
     const getOptions = (extras = {}) => {
 
-        const options = {
-            knex: {
-                client: 'sqlite3',
-                useNullAsDefault: true,
-                connection: {
-                    filename: ':memory:'
-                }
-            }
-        };
+        const options = { knex: basicKnexConfig };
 
         return Hoek.applyToDefaults(options, extras);
     };
@@ -42,20 +41,11 @@ describe('Schwifty', () => {
     const makeKnex = () => {
 
         return Knex({
-            client: 'sqlite3',
-            useNullAsDefault: true,
-            connection: {
-                filename: ':memory:'
-            },
+            ...basicKnexConfig,
             migrations: {
                 tableName: 'TestMigrations'
             }
         });
-    };
-
-    const basicKnexConfig = {
-        client: 'sqlite3',
-        useNullAsDefault: true
     };
 
     const getServer = async (options) => {
@@ -107,25 +97,31 @@ describe('Schwifty', () => {
         };
     };
 
-    before(() => {
+    // Just warm-up sqlite, so that the tests have consistent timing
+    before(() => require('sqlite3'));
 
-        require('sqlite3'); // Just warm-up sqlite, so that the tests have consistent timing
+    it('can be registered multiple times.', async () => {
 
-        Ahem._setHapi(Hapi);
+        const server = Hapi.server();
+
+        await server.register(Schwifty);
+
+        expect(server.registrations.schwifty).to.exist();
+
+        await server.register({
+            plugin: Schwifty,
+            options: { knex: basicKnexConfig }
+        });
+
+        expect(server.knex()).to.exist();
     });
-
-    after(() => Ahem._setHapi(InternalHapi));
 
     it('connects models to knex instance during onPreStart.', async () => {
 
-        const config = getOptions({
-            models: [
-                TestModels.Dog,
-                TestModels.Person
-            ]
-        });
+        const server = await getServer({ knex: basicKnexConfig });
 
-        const server = await getServer(config);
+        server.registerModel(TestModels.Dog);
+        server.registerModel(TestModels.Person);
 
         expect(server.models().Dog.knex()).to.not.exist();
         expect(server.models().Person.knex()).to.not.exist();
@@ -138,7 +134,7 @@ describe('Schwifty', () => {
 
     it('tears-down connections onPostStop.', async () => {
 
-        const server = await getServer(getOptions());
+        const server = await getServer({ knex: basicKnexConfig });
         let toredown = 0;
 
         const origDestroy = server.knex().context.destroy;
@@ -162,15 +158,12 @@ describe('Schwifty', () => {
 
         const plugin1 = {
             name: 'plugin-one',
-            register: (srv, opts) => {
+            register: async (srv) => {
 
-                // Creates plugin-specific knex instance using the base connection configuration specified in getOptions
-                srv.schwifty(getOptions({
-                    models: [
-                        TestModels.Dog,
-                        TestModels.Person
-                    ]
-                }));
+                await srv.register({ plugin: Schwifty, options: { knex: basicKnexConfig } });
+
+                srv.registerModel(TestModels.Dog);
+                srv.registerModel(TestModels.Person);
 
                 expect(srv.knex()).to.not.shallow.equal(server.knex());
 
@@ -185,9 +178,9 @@ describe('Schwifty', () => {
 
         const plugin2 = {
             name: 'plugin-two',
-            register: (srv, opts) => {
+            register: (srv) => {
 
-                srv.schwifty([TestModels.Zombie]);
+                srv.registerModel([TestModels.Zombie]);
 
                 // Plugin 2 will use the root server's (referenced by server variable) knex connection
                 expect(srv.knex()).to.shallow.equal(server.knex());
@@ -232,54 +225,37 @@ describe('Schwifty', () => {
         expect(toredown).to.equal(0);
     });
 
-    it('can be registered multiple times.', async () => {
-
-        const server = await getServer(getOptions({
-            models: [
-                TestModels.Dog,
-                TestModels.Person
-            ]
-        }));
-
-        expect(server.registrations.schwifty).to.exist();
-
-        await server.register({
-            plugin: Schwifty,
-            options: { models: [TestModels.Movie, TestModels.Zombie] }
-        });
-
-        expect(Object.keys(server.models())).to.only.contain([
-            'Dog',
-            'Person',
-            'Movie',
-            'Zombie'
-        ]);
-    });
-
     describe('plugin registration', () => {
 
-        it('takes `models` option as an array of objects.', async () => {
+        it('accepts `knex` as a knex instance.', async () => {
 
-            const options = getOptions({
-                models: [
-                    TestModels.Dog,
-                    TestModels.Person
-                ]
-            });
+            const server = await getServer();
+            const knex = Knex(basicKnexConfig);
 
-            const server = await getServer(options);
-            const models = server.models();
+            const plugin = {
+                name: 'my-plugin',
+                register: async (srv) => {
 
-            expect(models.Dog).to.exist();
-            expect(models.Person).to.exist();
+                    await srv.register({
+                        plugin: Schwifty,
+                        options: { knex }
+                    });
+
+                    expect(srv.knex()).to.shallow.equal(knex);
+                }
+            };
+
+            await server.register(plugin);
         });
 
-        it('throws if the `models` option is not an array or string.', async () => {
+        it('throws when passed invalid plugin options.', async () => {
 
-            const options = getOptions({ models: {} });
+            const server = Hapi.server();
 
-            // We check the message against a regex because it also contains info on the server's knex connection and models, which are impractical / impossible to match exactly via string
-            await expect(getServer(options)).to.reject(/^Bad plugin options passed to schwifty\./);
+            await expect(server.register({
+                plugin: Schwifty,
+                options: []
+            })).to.reject('Bad plugin options passed to schwifty. "value" must be of type object');
         });
 
         it('throws when `teardownOnStop` is specified more than once.', async () => {
@@ -322,44 +298,71 @@ describe('Schwifty', () => {
         });
     });
 
-    describe('server.schwifty() decoration', () => {
+    describe('server.registerModel() decoration', () => {
+
+        it('accepts a single model.', async () => {
+
+            const server = await getServer();
+
+            server.registerModel(TestModels.Dog);
+
+            const models = server.models();
+
+            expect(models.Dog).to.exist();
+        });
+
+        it('accepts an array of models.', async () => {
+
+            const server = await getServer();
+
+            server.registerModel([TestModels.Dog, TestModels.Person]);
+
+            const models = server.models();
+
+            expect(models.Dog).to.exist();
+            expect(models.Person).to.exist();
+        });
+
+        it('throws when passed something other than a single or array of models.', async () => {
+
+            const server = await getServer();
+
+            expect(() => server.registerModel({})).to.throw('Invalid models passed to server.registerModel(). "value" must be of type function');
+        });
 
         it('aggregates models across plugins.', async () => {
 
-            const options = getOptions({
-                models: [
-                    TestModels.Dog,
-                    TestModels.Person
-                ]
-            });
+            const server = await getServer(getOptions());
 
-            const server = await getServer(options);
+            server.registerModel([TestModels.Dog, TestModels.Person]);
 
             const plugin1 = {
                 name: 'plugin-one',
-                register: (srv, opts) => {
+                register: (srv) => {
 
-                    srv.schwifty({
-                        models: [TestModels.Movie]
-                    });
+                    srv.registerModel(TestModels.Movie);
                 }
             };
 
             const plugin2 = {
                 name: 'plugin-two',
-                register: (srv, opts) => {
+                register: (srv) => {
 
-                    srv.schwifty({
-                        models: [TestModels.Zombie]
-                    });
+                    srv.registerModel(TestModels.Zombie);
                 }
             };
 
             await server.register([plugin1, plugin2]);
             await server.initialize();
 
-            // Grab all models across plugins by passing true here:
-            const models = server.models(true);
+            const models = server.models();
+
+            expect(models).to.only.contain([
+                'Dog',
+                'Person',
+                'Zombie',
+                'Movie'
+            ]);
 
             expect(models.Dog.tableName).to.equal('Dog');
             expect(models.Person.tableName).to.equal('Person');
@@ -369,27 +372,19 @@ describe('Schwifty', () => {
 
         it('aggregates model definitions within a plugin.', async () => {
 
-            const server = await getServer(getOptions({
-                models: [
-                    TestModels.Dog,
-                    TestModels.Person
-                ]
-            }));
+            const server = await getServer(getOptions());
+
+            server.registerModel([TestModels.Dog, TestModels.Person]);
 
             const rootState = state(getRootRealm(server));
             expect(Object.keys(rootState.models)).to.equal(['Dog', 'Person']);
 
             const plugin = {
                 name: 'my-plugin',
-                register: (srv, opts) => {
+                register: (srv) => {
 
-                    srv.schwifty({
-                        models: [TestModels.Movie]
-                    });
-
-                    srv.schwifty({
-                        models: [TestModels.Zombie]
-                    });
+                    srv.registerModel(TestModels.Movie);
+                    srv.registerModel(TestModels.Zombie);
 
                     srv.app.myState = state(srv.realm);
                 }
@@ -413,9 +408,9 @@ describe('Schwifty', () => {
 
             const plugin = {
                 name: 'my-plugin',
-                register: (srv, opts) => {
+                register: (srv) => {
 
-                    srv.schwifty(TestModels.Zombie);
+                    srv.registerModel(TestModels.Zombie);
                 }
             };
 
@@ -424,83 +419,44 @@ describe('Schwifty', () => {
             expect(state(server.realm).models.Zombie).to.exist();
         });
 
-        it('accepts `knex` as a knex instance.', async () => {
-
-            const options = getOptions();
-            delete options.knex;
-
-            const server = await getServer(options);
-            const knex = Knex(basicKnexConfig);
-
-            const plugin = {
-                name: 'my-plugin',
-                register: (srv, opts) => {
-
-                    srv.schwifty({ knex });
-
-                    expect(srv.knex()).to.shallow.equal(knex);
-                }
-            };
-
-            await server.register(plugin);
-        });
-
-        it('throws on invalid config.', async () => {
-
-            const server = await getServer(getOptions());
-
-            const plugin = {
-                name: 'my-plugin',
-                register: (srv, opts) => {
-
-                    expect(() => {
-
-                        srv.schwifty({ invalidProp: 'bad' });
-                    }).to.throw(/\"value\" does not match any of the allowed types/);
-                }
-            };
-
-            await server.register(plugin);
-        });
-
         it('sandboxes services in the current plugin when using Schmervice.sandbox symbol.', async () => {
 
             const server = Hapi.server();
             await server.register(Schwifty);
 
-            server.schwifty(class ModelA extends Schwifty.Model {});
+            server.registerModel(class ModelA extends Schwifty.Model {});
 
             const plugin = await getPlugin(server, 'plugin');
 
-            plugin.schwifty(class ModelA extends Schwifty.Model {
+            plugin.registerModel(class ModelA extends Schwifty.Model {
                 static get [Schwifty.sandbox]() {
 
                     return true;
                 }
             });
 
-            plugin.schwifty(class ModelB extends Schwifty.Model {
+            plugin.registerModel(class ModelB extends Schwifty.Model {
                 static get [Schwifty.sandbox]() {
 
                     return 'plugin';
                 }
             });
 
-            plugin.schwifty(class ModelC extends Schwifty.Model {
+            plugin.registerModel(class ModelC extends Schwifty.Model {
                 static get [Schwifty.sandbox]() {
 
                     return true;
                 }
             });
 
-            plugin.schwifty(class ModelD extends Schwifty.Model {
+            plugin.registerModel(class ModelD extends Schwifty.Model {
                 static get [Schwifty.sandbox]() {
 
                     return false;
                 }
             });
 
-            plugin.schwifty(class ModelE extends Schwifty.Model {
+            plugin.registerModel(class ModelE extends Schwifty.Model {
                 static get [Schwifty.sandbox]() {
 
                     return 'server';
@@ -513,18 +469,15 @@ describe('Schwifty', () => {
 
         it('throws on model name collision.', async () => {
 
-            const server = await getServer(getOptions({
-                models: [
-                    TestModels.Dog,
-                    TestModels.Person
-                ]
-            }));
+            const server = await getServer();
+
+            server.registerModel(TestModels.Dog);
 
             const plugin = {
                 name: 'my-plugin',
-                register: (srv, opts) => {
+                register: (srv) => {
 
-                    srv.schwifty(TestModels.Dog);
+                    srv.registerModel(TestModels.Dog);
                 }
             };
 
@@ -538,11 +491,11 @@ describe('Schwifty', () => {
 
             const myPlugin = await getPlugin(server, 'my-plugin');
 
-            myPlugin.schwifty(sandbox(TestModels.Dog));
+            myPlugin.registerModel(sandbox(TestModels.Dog));
 
             expect(() => {
 
-                myPlugin.schwifty(sandbox(TestModels.Dog));
+                myPlugin.registerModel(sandbox(TestModels.Dog));
             }).to.throw('A model named "Dog" has already been registered in plugin namespace "my-plugin".');
         });
 
@@ -553,30 +506,33 @@ describe('Schwifty', () => {
 
             const myPlugin = await getPlugin(server, 'my-plugin');
 
-            myPlugin.schwifty(sandbox(TestModels.Dog));
+            myPlugin.registerModel(sandbox(TestModels.Dog));
 
             const myOtherPlugin = await getPlugin(myPlugin, 'my-other-plugin');
 
             expect(() => {
 
-                myOtherPlugin.schwifty(TestModels.Dog);
+                myOtherPlugin.registerModel(TestModels.Dog);
             }).to.throw('A model named "Dog" has already been registered in plugin namespace "my-plugin".');
         });
 
         it('throws when multiple knex instances passed to same plugin.', async () => {
 
-            const server = await getServer({});
+            const server = await getServer();
 
             const plugin = {
                 name: 'my-plugin',
-                register: (srv, opts) => {
+                register: async (srv) => {
 
-                    srv.schwifty({ knex: Knex(basicKnexConfig) });
+                    await srv.register({
+                        plugin: Schwifty,
+                        options: { knex: Knex(basicKnexConfig) }
+                    });
 
-                    expect(() => {
-
-                        srv.schwifty({ knex: Knex(basicKnexConfig) });
-                    }).to.throw('A knex instance/config may be specified only once per server or plugin.');
+                    await expect(srv.register({
+                        plugin: Schwifty,
+                        options: { knex: Knex(basicKnexConfig) }
+                    })).to.reject('A knex instance/config may be specified only once per server or plugin.');
                 }
             };
 
@@ -632,9 +588,9 @@ describe('Schwifty', () => {
 
             const plugin = {
                 name: 'plugin',
-                register: (srv, opts) => {
+                register: async (srv) => {
 
-                    srv.schwifty({ knex: knex2 });
+                    await srv.register({ plugin: Schwifty, options: { knex: knex2 } });
 
                     srv.route({
                         path: '/plugin',
@@ -710,12 +666,12 @@ describe('Schwifty', () => {
             const knex1 = makeKnex();
             const knex2 = makeKnex();
 
-            server.schwifty({ knex: knex1 });
+            await server.register({ plugin: Schwifty, options: { knex: knex1 } });
 
             const pluginA = await getPlugin(server, 'a');
             const pluginB = await getPlugin(pluginA, 'b');
 
-            pluginA.schwifty({ knex: knex2 });
+            await pluginA.register({ plugin: Schwifty, options: { knex: knex2 } });
 
             expect(server.knex(true)).to.shallow.equal(server.knex());
             expect(pluginA.knex(true)).to.shallow.equal(server.knex());
@@ -737,16 +693,15 @@ describe('Schwifty', () => {
                 [Schwifty.sandbox]: true
             });
 
-            server.schwifty({ knex: knex1 });
+            await server.register({ plugin: Schwifty, options: { knex: knex1 } });
 
             const pluginA = await getPlugin(server, 'a');
             const pluginB = await getPlugin(pluginA, 'b');
             const pluginC = await getPlugin(pluginB, 'c');
 
-            await pluginC.register(Schwifty); // So that the namespace is know
-
-            pluginA.schwifty({ knex: knex2 });
-            pluginB.schwifty({ knex: knex3 });
+            await pluginC.register(Schwifty); // So that the namespace is known
+            await pluginA.register({ plugin: Schwifty, options: { knex: knex2 } });
+            await pluginB.register({ plugin: Schwifty, options: { knex: knex3 } });
 
             expect(server.knex('a')).to.shallow.equal(pluginA.knex());
             expect(server.knex('b')).to.shallow.equal(pluginB.knex());
@@ -767,7 +722,7 @@ describe('Schwifty', () => {
             const server = Hapi.server();
             await server.register(Schwifty);
 
-            // This plugin namespace is unknown because it does not register schwifty or call server.schwifty()
+            // This plugin namespace is unknown because it does not register schwifty or call server.registerModel()
             await getPlugin(server, 'nope');
 
             expect(() => server.knex('nope')).to.throw('The plugin namespace nope does not exist.');
@@ -779,10 +734,10 @@ describe('Schwifty', () => {
             await server.register(Schwifty);
 
             const pluginX1 = await getPlugin(server, 'x', { multiple: true });
-            pluginX1.schwifty({ knex: makeKnex() });
+            await pluginX1.register({ plugin: Schwifty, options: { knex: makeKnex() } });
 
             const pluginX2 = await getPlugin(server, 'x', { multiple: true });
-            pluginX2.schwifty({ knex: makeKnex() });
+            await pluginX2.register({ plugin: Schwifty, options: { knex: makeKnex() } });
 
             expect(() => server.models('x')).to.throw('The plugin namespace x is not unique: is that plugin registered multiple times?');
         });
@@ -793,10 +748,12 @@ describe('Schwifty', () => {
         it('binds knex instances to models.', async () => {
 
             const knex = makeKnex();
-            const server = await getServer({ knex, models: [TestModels.Person] });
+            const server = await getServer({ knex });
+
+            server.registerModel(TestModels.Person);
 
             const plugin = await getPlugin(server, 'plugin');
-            plugin.schwifty(class Dog extends TestModels.Dog {
+            plugin.registerModel(class Dog extends TestModels.Dog {
                 static get [Schwifty.sandbox]() {
 
                     return true;
@@ -818,8 +775,8 @@ describe('Schwifty', () => {
             const server = await getServer({ knex });
 
             const plugin = await getPlugin(server, 'plugin');
-            plugin.schwifty(TestModels.Person);
-            plugin.schwifty(class Dog extends TestModels.Dog {
+            plugin.registerModel(TestModels.Person);
+            plugin.registerModel(class Dog extends TestModels.Dog {
                 static get [Schwifty.bindKnex]() {
 
                     return false;
@@ -844,7 +801,7 @@ describe('Schwifty', () => {
                 name: 'plugin',
                 register: (srv, opts) => {
 
-                    srv.schwifty(TestModels.Person);
+                    srv.registerModel(TestModels.Person);
                 }
             };
 
@@ -863,9 +820,11 @@ describe('Schwifty', () => {
 
             const plugin = {
                 name: 'plugin',
-                register: (srv, opts) => {
+                register: async (srv) => {
 
-                    srv.schwifty({ knex: knex2, models: [TestModels.Person] });
+                    await srv.register({ plugin: Schwifty, options: { knex: knex2 } });
+
+                    srv.registerModel(TestModels.Person);
                 }
             };
 
@@ -884,7 +843,7 @@ describe('Schwifty', () => {
                 name: 'plugin',
                 register: (srv, opts) => {
 
-                    srv.schwifty(TestModels.Person);
+                    srv.registerModel(TestModels.Person);
                 }
             };
 
@@ -903,7 +862,8 @@ describe('Schwifty', () => {
             const Person = class Person extends TestModels.Person {};
             Person.knex(knex2);
 
-            const server = await getServer({ knex: knex1, models: [Person] });
+            const server = await getServer({ knex: knex1 });
+            server.registerModel(Person);
 
             expect(server.models().Person).to.shallow.equal(Person);
             expect(server.models().Person.knex()).to.shallow.equal(knex2);
@@ -931,14 +891,15 @@ describe('Schwifty', () => {
             it('and lists associated models in error.', async () => {
 
                 const knex = failKnexWith(makeKnex(), new Error());
-                const server = await getServer({ knex, models: [TestModels.Dog] });
+                const server = await getServer({ knex });
+                server.registerModel(TestModels.Dog);
 
                 const pluginA = await getPlugin(server, 'a');
                 const pluginB = await getPlugin(pluginA, 'b');
 
-                pluginA.schwifty(TestModels.Person);
-                pluginB.schwifty(sandbox(TestModels.Person));
-                pluginB.schwifty(sandbox(TestModels.Zombie));
+                pluginA.registerModel(TestModels.Person);
+                pluginB.registerModel(sandbox(TestModels.Person));
+                pluginB.registerModel(sandbox(TestModels.Zombie));
 
                 await expect(server.initialize()).to.reject('Could not connect to database using schwifty knex instance for models: "Dog", "Person", "Person" (b), "Zombie" (b).');
             });
@@ -981,9 +942,9 @@ describe('Schwifty', () => {
                 const knex = failKnexWith(makeKnex(), error);
                 const plugin = {
                     name: 'plugin',
-                    register: (srv, opts) => {
+                    register: async (srv) => {
 
-                        srv.schwifty({ knex });
+                        await srv.register({ plugin: Schwifty, options: { knex } });
                     }
                 };
 
@@ -1099,12 +1060,18 @@ describe('Schwifty', () => {
 
         it('respects server.path() when setting `migrationsDir`.', async () => {
 
-            const server = await getServer(getOptions({
-                migrateOnStart: true
-            }));
+            const server = Hapi.server();
 
             server.path(`${__dirname}/migrations`);
-            server.schwifty({ migrationsDir: 'basic' });
+
+            await server.register({
+                plugin: Schwifty,
+                options: {
+                    knex: basicKnexConfig,
+                    migrateOnStart: true,
+                    migrationsDir: 'basic'
+                }
+            });
 
             const versionPre = await server.knex().migrate.currentVersion();
             expect(versionPre).to.equal('none');
@@ -1120,9 +1087,12 @@ describe('Schwifty', () => {
             // Generates an object callable by server.register
             const makePlugin = (id, knex, migrationsDir) => ({
                 name: `plugin-${id}`,
-                register: (server, options) => {
+                register: async (server) => {
 
-                    server.schwifty({ knex, migrationsDir });
+                    await server.register({
+                        plugin: Schwifty,
+                        options: { knex, migrationsDir }
+                    });
                 }
             });
 
@@ -1268,12 +1238,10 @@ describe('Schwifty', () => {
 
         it('solely return models registered in route\'s realm by default.', async () => {
 
-            const server = await getServer(getOptions({
-                models: [
-                    TestModels.Dog,
-                    TestModels.Person
-                ]
-            }));
+            const server = await getServer(getOptions());
+
+            server.registerModel(TestModels.Dog);
+            server.registerModel(TestModels.Person);
 
             server.route({
                 path: '/root',
@@ -1313,7 +1281,7 @@ describe('Schwifty', () => {
                 name: 'my-plugin',
                 register: (srv) => {
 
-                    srv.schwifty(TestModels.Movie);
+                    srv.registerModel(TestModels.Movie);
                     srv.route({
                         path: '/plugin',
                         method: 'get',
@@ -1396,12 +1364,10 @@ describe('Schwifty', () => {
 
         it('return models across all realms when passed true.', async () => {
 
-            const server = await getServer(getOptions({
-                models: [
-                    TestModels.Dog,
-                    TestModels.Person
-                ]
-            }));
+            const server = await getServer(getOptions());
+
+            server.registerModel(TestModels.Dog);
+            server.registerModel(TestModels.Person);
 
             server.route({
                 path: '/root',
@@ -1439,7 +1405,7 @@ describe('Schwifty', () => {
                 name: 'my-plugin',
                 register: (srv, opts) => {
 
-                    srv.schwifty([TestModels.Zombie]);
+                    srv.registerModel([TestModels.Zombie]);
                     srv.route({
                         path: '/plugin',
                         method: 'get',
@@ -1492,10 +1458,10 @@ describe('Schwifty', () => {
             const pluginA = await getPlugin(server, 'a');
             const pluginB = await getPlugin(pluginA, 'b');
 
-            server.schwifty(TestModels.Dog);
-            pluginA.schwifty(TestModels.Movie);
-            pluginA.schwifty(sandbox(TestModels.Person));
-            pluginB.schwifty(TestModels.Zombie);
+            server.registerModel(TestModels.Dog);
+            pluginA.registerModel(TestModels.Movie);
+            pluginA.registerModel(sandbox(TestModels.Person));
+            pluginB.registerModel(TestModels.Zombie);
 
             expect(server.models()).to.shallow.equal(pluginB.models(true));
             expect(server.models('a')).to.shallow.equal(pluginB.models('a'));
@@ -1511,7 +1477,7 @@ describe('Schwifty', () => {
             const server = Hapi.server();
             await server.register(Schwifty);
 
-            // This plugin namespace is unknown because it does not register schwifty or call server.schwifty()
+            // This plugin namespace is unknown because it does not register schwifty or call server.registerModel()
             await getPlugin(server, 'nope');
 
             expect(() => server.models('nope')).to.throw('The plugin namespace nope does not exist.');
@@ -1523,10 +1489,10 @@ describe('Schwifty', () => {
             await server.register(Schwifty);
 
             const pluginX1 = await getPlugin(server, 'x', { multiple: true });
-            pluginX1.schwifty(TestModels.Dog);
+            pluginX1.registerModel(TestModels.Dog);
 
             const pluginX2 = await getPlugin(server, 'x', { multiple: true });
-            pluginX2.schwifty(TestModels.Movie);
+            pluginX2.registerModel(TestModels.Movie);
 
             expect(() => server.models('x')).to.throw('The plugin namespace x is not unique: is that plugin registered multiple times?');
         });
@@ -2244,7 +2210,7 @@ describe('Schwifty', () => {
                 async register(srv, options) {
 
                     await srv.register(plugins);
-                    srv.schwifty(models);
+                    srv.registerModel(models);
                     srv.expose('models', () => srv.models());
                 }
             });
@@ -2272,7 +2238,7 @@ describe('Schwifty', () => {
             const pluginA1 = makePlugin('pluginA1', [ModelA1a, ModelA1b], []);
             const pluginA = makePlugin('pluginA', [ModelA1, ModelA2], [pluginA1, pluginX]);
 
-            server.schwifty(ModelO);
+            server.registerModel(ModelO);
 
             await server.register(pluginA);
 
@@ -2327,10 +2293,17 @@ describe('Schwifty', () => {
 
             const makePlugin = (name, models, knex, plugins) => ({
                 name,
-                async register(srv, options) {
+                async register(srv) {
 
                     await srv.register(plugins);
-                    srv.schwifty({ models, knex });
+
+                    await srv.register({
+                        plugin: Schwifty,
+                        options: { knex }
+                    });
+
+                    srv.registerModel(models);
+
                     srv.expose('knex', () => srv.knex());
                 }
             });
@@ -2369,7 +2342,7 @@ describe('Schwifty', () => {
             const pluginA1 = makePlugin('pluginA1', [ModelA1a, ModelA1b], undefined, []);
             const pluginA = makePlugin('pluginA', [ModelA1, ModelA2], knex2, [pluginA1, pluginX]);
 
-            server.schwifty(ModelO);
+            server.registerModel(ModelO);
 
             await server.register(pluginA);
 
