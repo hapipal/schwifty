@@ -6,7 +6,7 @@
 
 ## The hapi plugin
 ### Registration
-Schwifty may be registered multiple times—it should be registered in any plugin that would like to use any of its features.  Upon each registration these options are collected until server initialization.  Knex configurations passed during configuration are attributed to the registering plugin/server under schwifty's [ownership system](#plugin-ownership-of-knex-instances-and-models).  Server initialization will fail if any knex instances handled by schwifty do not have basic database connectivity.
+Schwifty may be registered multiple times—it should be registered in any plugin that would like to use any of its features.  Upon each registration these options are collected until server initialization.  Knex configurations passed during registration are attributed to the registering plugin/server under schwifty's [ownership system](#plugin-ownership-of-knex-instances-and-models).  Server initialization will fail if any knex instances handled by schwifty do not have basic database connectivity.
 
 Schwifty takes the following registration options,
 
