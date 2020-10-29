@@ -4,7 +4,7 @@
   "description": "A hapi plugin integrating Objection ORM",
   "main": "lib/index.js",
   "scripts": {
-    "test": "lab -a @hapi/code -t 100 -L -I \"FinalizationRegistry,WeakRef\"",
+    "test": "lab -a @hapi/code -t 100 -L",
     "coveralls": "lab -r lcov | coveralls"
   },
   "repository": {
@@ -28,8 +28,8 @@
   ],
   "dependencies": {
     "@hapi/hoek": "9.x.x",
-    "joi": "17.x.x",
-    "toys": "2.x.x"
+    "@hapipal/toys": "3.x.x",
+    "joi": "17.x.x"
   },
   "peerDependencies": {
     "@hapi/hapi": ">=19 <21",
@@ -41,9 +41,9 @@
     "@hapi/code": "8.x.x",
     "@hapi/hapi": "20.x.x",
     "@hapi/lab": "24.x.x",
-    "ahem": "1.x.x",
+    "@hapipal/ahem": "2.x.x",
     "coveralls": "3.x.x",
-    "knex": "0.20.x",
+    "knex": "0.21.x",
     "objection": "2.x.x",
     "sqlite3": "5.x.x"
   },

@@ -57,20 +57,13 @@ const Schwifty = require('schwifty');
 
     // Register a model with schwifty...
 
-    server.schwifty(
+    server.registerModel(
         class Dog extends Schwifty.Model {
-            static get tableName() {
-
-                return 'Dog';
-            }
-
-            static get joiSchema() {
-
-                return Joi.object({
-                    id: Joi.number(),
-                    name: Joi.string()
-                });
-            }
+            static tableName = 'Dog';
+            static joiSchema = Joi.object({
+                id: Joi.number(),
+                name: Joi.string()
+            });
         }
     );
 
