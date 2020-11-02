@@ -287,14 +287,42 @@ describe('Schwifty', () => {
             await expect(server.register(plugin)).to.reject('Schwifty\'s migrateOnStart option can only be specified once.');
         });
 
-        it('throws when multiple knex instances passed to same server.', async () => {
+        it('throws when multiple knex instances passed to root server.', async () => {
 
-            const server = await getServer({ knex: Knex(basicKnexConfig) });
+            const server = Hapi.server();
+
+            await server.register({
+                plugin: Schwifty,
+                options: { knex: Knex(basicKnexConfig) }
+            });
 
             await expect(server.register({
                 plugin: Schwifty,
                 options: { knex: Knex(basicKnexConfig) }
             })).to.reject('A knex instance/config may be specified only once per server or plugin.');
+        });
+
+        it('throws when multiple knex instances passed to same plugin.', async () => {
+
+            const server = await getServer();
+
+            const plugin = {
+                name: 'my-plugin',
+                register: async (srv) => {
+
+                    await srv.register({
+                        plugin: Schwifty,
+                        options: { knex: Knex(basicKnexConfig) }
+                    });
+
+                    await expect(srv.register({
+                        plugin: Schwifty,
+                        options: { knex: Knex(basicKnexConfig) }
+                    })).to.reject('A knex instance/config may be specified only once per server or plugin.');
+                }
+            };
+
+            await server.register(plugin);
         });
     });
 
@@ -497,29 +525,6 @@ describe('Schwifty', () => {
 
                 myOtherPlugin.registerModel(TestModels.Dog);
             }).to.throw('A model named "Dog" has already been registered in plugin namespace "my-plugin".');
-        });
-
-        it('throws when multiple knex instances passed to same plugin.', async () => {
-
-            const server = await getServer();
-
-            const plugin = {
-                name: 'my-plugin',
-                register: async (srv) => {
-
-                    await srv.register({
-                        plugin: Schwifty,
-                        options: { knex: Knex(basicKnexConfig) }
-                    });
-
-                    await expect(srv.register({
-                        plugin: Schwifty,
-                        options: { knex: Knex(basicKnexConfig) }
-                    })).to.reject('A knex instance/config may be specified only once per server or plugin.');
-                }
-            };
-
-            await server.register(plugin);
         });
     });
 
