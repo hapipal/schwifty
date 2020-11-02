@@ -1,8 +1,10 @@
 # API
 
+A model layer for [hapi](https://hapi.dev) integrating [Objection ORM](https://vincit.github.io/objection.js/)
+
 > **Note**
 >
-> Schwifty is intended for use with hapi v17+, joi v16+, Objection v1 and v2, knex v0.16+, and nodejs v8+.
+> Schwifty is intended for use with hapi v19+, joi v17+, Objection v1 and v2, knex v0.16+, and nodejs v12+ (_see v5 for lower support_)
 
 ## The hapi plugin
 ### Registration
@@ -185,7 +187,7 @@ A path to a knex migrations stub file that utilizes async/await and is set to fo
 
 ```js
 // knexfile.js
-const Schwifty = require('schwifty');
+const Schwifty = require('@hapipal/schwifty');
 
 module.exports = {
     client: 'pg',

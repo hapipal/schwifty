@@ -106,7 +106,7 @@ describe('Schwifty', () => {
 
         await server.register(Schwifty);
 
-        expect(server.registrations.schwifty).to.exist();
+        expect(server.registrations['@hapipal/schwifty']).to.exist();
 
         await server.register({
             plugin: Schwifty,
@@ -400,23 +400,6 @@ describe('Schwifty', () => {
                 'Movie',
                 'Zombie'
             ]);
-        });
-
-        it('accepts a single model definition.', async () => {
-
-            const server = await getServer(getOptions());
-
-            const plugin = {
-                name: 'my-plugin',
-                register: (srv) => {
-
-                    srv.registerModel(TestModels.Zombie);
-                }
-            };
-
-            await server.register(plugin);
-
-            expect(state(server.realm).models.Zombie).to.exist();
         });
 
         it('sandboxes services in the current plugin when using Schmervice.sandbox symbol.', async () => {
