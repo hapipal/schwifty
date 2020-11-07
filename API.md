@@ -1,8 +1,10 @@
 # API
 
+A model layer for [hapi](https://hapi.dev) integrating [Objection ORM](https://vincit.github.io/objection.js/)
+
 > **Note**
 >
-> Schwifty is intended for use with hapi v17+, joi v16+, Objection v1 and v2, knex v0.16+, and nodejs v8+.
+> Schwifty is intended for use with hapi v19+, joi v17+, Objection v1 and v2, knex v0.16+, and nodejs v12+ (_see v5 for lower support_)
 
 ## The hapi plugin
 ### Registration
@@ -138,16 +140,16 @@ The `migrateOnStart` options `true` and `'latest'` correspond to [`knex.migrate.
 Schwifty's model class extends [`Objection.Model`](https://vincit.github.io/objection.js/api/model/), adding support for [Joi](https://github.com/hapijs/joi) schemas wherever objection's base model class employs [`jsonSchema`](https://vincit.github.io/objection.js/api/model/static-properties.html#static-jsonschema).  This primarily plays into model instance validation and serialization of JSON/array fields.
 
 ### `joiSchema`
-An optional [`Joi.object()`](https://hapi.dev/family/joi/#object) schema, where each of its keys is a field of the given model.
+An optional [`Joi.object()`](https://joi.dev/api/#object) schema, where each of its keys is a field of the given model.
+
+### `joiSchemaPatch`
+This property is computed as a getter using the contents of `joiSchema`.  It is identical to `joiSchema`, except it ignores default values and missing required fields.  Objection additionally validates `Model.query().patch()` query input against this schema.
 
 ### `jsonAttributes`
-This property is computed as a getter using the contents of `joiSchema`.  Any of the schema's keys that are [`Joi.object()`](https://hapi.dev/family/joi/#object)s or [`Joi.array()`](https://hapi.dev/family/joi/#array)s will be included in the list of JSON attributes.  If this property is set, it will forget about having been computed.  For more info, see objection's [`jsonAttributes`](https://vincit.github.io/objection.js/api/model/static-properties.html#static-jsonattributes).
-
-### `getJoiSchema([patch])`
-Returns the [`joiSchema`](#joischema) and memoizes the result.  This is useful when `joiSchema` is defined as a getter, but you'd like to avoid constantly recompiling the schema when accessing it.  Past memoization is forgotten by extended classes.  When `patch` is `true`, the same schema is returned (and memoized separately), but set so that it ignores default values and missing required fields.
+This property is computed as a getter using the contents of `joiSchema`.  Any of the schema's keys that are [`Joi.object()`](https://joi.dev/api/#object)s or [`Joi.array()`](https://joi.dev/api/#array)s will be included in the list of JSON attributes.  If this property is set, it will forget about having been computed.  For more info, see objection's [`jsonAttributes`](https://vincit.github.io/objection.js/api/model/static-properties.html#static-jsonattributes).
 
 ### `field(name)`
-Returns the schema for the field named `name` on the model's [`joiSchema`](#joischema), but marked as optional and ignoring defaults.  The schema also has two [alterations](https://hapi.dev/family/joi/#anyaltertargets): one named `'full'` which respects defaults and required/optional/forbidden status, and another named `'patch'` which does nothing but exists to allow for explicitness.
+Returns the schema for the field named `name` on the model's [`joiSchema`](#joischema), but marked as optional and ignoring defaults.  The schema also has two [alterations](https://joi.dev/api/#anyaltertargets): one named `'full'` which respects defaults and required/optional/forbidden status, and another named `'patch'` which does nothing but exists to allow for explicitness.
 
 ```js
 const User = class User extends Schwifty.Model {
@@ -185,7 +187,7 @@ A path to a knex migrations stub file that utilizes async/await and is set to fo
 
 ```js
 // knexfile.js
-const Schwifty = require('schwifty');
+const Schwifty = require('@hapipal/schwifty');
 
 module.exports = {
     client: 'pg',
