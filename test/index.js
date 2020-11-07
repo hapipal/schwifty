@@ -1669,9 +1669,9 @@ describe('Schwifty', () => {
 
         describe('static getter joiSchemaPatch', () => {
 
-            it('returns nothing when there\'s no Joi schema.', () => {
+            it('returns undefined for a missing Joi schema.', () => {
 
-                expect(Schwifty.Model.joiSchemaPatch).to.not.exist();
+                expect(Schwifty.Model.joiSchemaPatch).to.equal(undefined);
             });
 
             it('memoizes the patch schema.', () => {
@@ -1723,12 +1723,6 @@ describe('Schwifty', () => {
 
                 expect(Model.joiSchemaPatch).to.shallow.equal(updatedPatch);
                 expect(keysOf(Model.joiSchemaPatch)).to.only.include(['a', 'b']);
-            });
-
-
-            it('returns undefined for a missing Joi schema.', () => {
-
-                expect(Schwifty.Model.joiSchemaPatch).to.equal(undefined);
             });
         });
 
