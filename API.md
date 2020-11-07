@@ -4,7 +4,7 @@ A model layer for [hapi](https://hapi.dev) integrating [Objection ORM](https://v
 
 > **Note**
 >
-> Schwifty is intended for use with hapi v19+, joi v17+, Objection v1 and v2, knex v0.16+, and nodejs v12+ (_see v5 for lower support_)
+> Schwifty is intended for use with hapi v19+, nodejs v12+, Joi v17+, Objection v1 and v2, and knex v0.16+ (_see v5 for lower support_).
 
 ## The hapi plugin
 ### Registration
@@ -137,7 +137,7 @@ If a knex instance is shared across plugins (under [plugin ownership of knex ins
 The `migrateOnStart` options `true` and `'latest'` correspond to [`knex.migrate.latest()`](https://knexjs.org/#Migrations-latest), while `'rollback'` corresponds to [`knex.migrate.rollback()`](https://knexjs.org/#Migrations-rollback).
 
 ## `Schwifty.Model`
-Schwifty's model class extends [`Objection.Model`](https://vincit.github.io/objection.js/api/model/), adding support for [Joi](https://github.com/hapijs/joi) schemas wherever objection's base model class employs [`jsonSchema`](https://vincit.github.io/objection.js/api/model/static-properties.html#static-jsonschema).  This primarily plays into model instance validation and serialization of JSON/array fields.
+Schwifty's model class extends [`Objection.Model`](https://vincit.github.io/objection.js/api/model/), adding support for [Joi](https://joi.dev/) schemas wherever objection's base model class employs [`jsonSchema`](https://vincit.github.io/objection.js/api/model/static-properties.html#static-jsonschema).  This primarily plays into model instance validation and serialization of JSON/array fields.
 
 ### `joiSchema`
 An optional [`Joi.object()`](https://joi.dev/api/#object) schema, where each of its keys is a field of the given model.
