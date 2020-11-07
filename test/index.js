@@ -1547,14 +1547,11 @@ describe('Schwifty', () => {
             it('throws Objection.ValidationError with multiple errors per key.', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({
-                            persnicketyField: Joi.string().max(1).min(10)
-                        }).options({
-                            abortEarly: false
-                        });
-                    }
+                    static joiSchema = Joi.object({
+                        persnicketyField: Joi.string().max(1).min(10)
+                    }).options({
+                        abortEarly: false
+                    });
                 };
 
                 const instance = new Model();
@@ -1606,10 +1603,8 @@ describe('Schwifty', () => {
                 let seenOptions;
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
 
-                        return Joi.object();
-                    }
+                    static joiSchema = Joi.object();
 
                     $beforeValidate(schema, json, options) {
 
@@ -1627,7 +1622,7 @@ describe('Schwifty', () => {
                 const persnickety = { persnicketyField: 'xxxxx' }; // Length of 5, bigger than max
 
                 expect(() => instance.$validate(persnickety)).to.throw(Objection.ValidationError);
-                expect(seenSchema).to.shallow.equal(Model.getJoiSchema());
+                expect(seenSchema).to.shallow.equal(Model.joiSchema);
                 expect(seenJson).to.equal(persnickety);
                 expect(seenOptions).to.equal({});
             });
@@ -1659,13 +1654,10 @@ describe('Schwifty', () => {
             it('allows missing required properties when `patch` option is passed to $validate().', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({
-                            requiredField: Joi.any().required(),
-                            hasDefault: Joi.any().default('mosdef') // should not appear after validation
-                        });
-                    }
+                    static joiSchema = Joi.object({
+                        requiredField: Joi.any().required(),
+                        hasDefault: Joi.any().default('mosdef') // should not appear after validation
+                    });
                 };
 
                 const instance = new Model();
@@ -1675,62 +1667,68 @@ describe('Schwifty', () => {
             });
         });
 
-        describe('static method getJoiSchema(patch)', () => {
+        describe('static getter joiSchemaPatch', () => {
 
             it('returns nothing when there\'s no Joi schema.', () => {
 
-                expect(Schwifty.Model.getJoiSchema()).to.not.exist();
-                expect(Schwifty.Model.getJoiSchema(true)).to.not.exist();
-            });
-
-            it('memoizes the plain schema.', () => {
-
-                const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object();
-                    }
-                };
-
-                expect(Model.getJoiSchema()).to.shallow.equal(Model.getJoiSchema());
+                expect(Schwifty.Model.joiSchemaPatch).to.not.exist();
             });
 
             it('memoizes the patch schema.', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object();
-                    }
+                    static joiSchema = Joi.object();
                 };
 
-                expect(Model.getJoiSchema()).to.not.shallow.equal(Model.getJoiSchema(true));
-                expect(Model.getJoiSchema(true)).to.shallow.equal(Model.getJoiSchema(true));
+                expect(Model.joiSchemaPatch).to.exist();
+                expect(Model.joiSchemaPatch).to.shallow.equal(Model.joiSchemaPatch);
             });
 
             it('forgets past memoization on extended classes.', () => {
 
                 const ModelOne = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({ a: Joi.any() });
-                    }
+                    static joiSchema = Joi.object({ a: Joi.any() });
                 };
 
                 const keysOf = (schema) => Object.keys(schema.describe().keys || {});
 
-                expect(keysOf(ModelOne.getJoiSchema())).to.only.include(['a']);
-                expect(keysOf(ModelOne.getJoiSchema(true))).to.only.include(['a']);
+                expect(keysOf(ModelOne.joiSchema)).to.only.include(['a']);
+                expect(keysOf(ModelOne.joiSchemaPatch)).to.only.include(['a']);
 
                 const ModelTwo = class extends ModelOne {
-                    static get joiSchema() {
-
-                        return super.joiSchema.keys({ b: Joi.any() });
-                    }
+                    static joiSchema = ModelOne.joiSchema.keys({ b: Joi.any() });
                 };
 
-                expect(keysOf(ModelTwo.getJoiSchema())).to.only.include(['a', 'b']);
-                expect(keysOf(ModelTwo.getJoiSchema(true))).to.only.include(['a', 'b']);
+                expect(keysOf(ModelTwo.joiSchema)).to.only.include(['a', 'b']);
+                expect(keysOf(ModelTwo.joiSchemaPatch)).to.only.include(['a', 'b']);
+            });
+        });
+
+        describe('static setter joiSchemaPatch', () => {
+
+            it('sets joiSchemaPatch.', () => {
+
+                const Model = class extends Schwifty.Model {
+                    static joiSchema = Joi.object({ a: Joi.any() });
+                };
+
+                const keysOf = (schema) => Object.keys(schema.describe().keys || {});
+
+                expect(keysOf(Model.joiSchema)).to.only.include(['a']);
+                expect(keysOf(Model.joiSchemaPatch)).to.only.include(['a']);
+
+                const updatedPatch = Joi.object({ a: Joi.any(), b: Joi.any() });
+
+                Model.joiSchemaPatch = updatedPatch;
+
+                expect(Model.joiSchemaPatch).to.shallow.equal(updatedPatch);
+                expect(keysOf(Model.joiSchemaPatch)).to.only.include(['a', 'b']);
+            });
+
+
+            it('returns undefined for a missing Joi schema.', () => {
+
+                expect(Schwifty.Model.joiSchemaPatch).to.equal(undefined);
             });
         });
 
@@ -1739,14 +1737,11 @@ describe('Schwifty', () => {
             it('tailors a patch version of the field validation by default.', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({
-                            a: Joi.string().min(3),
-                            b: Joi.string().default('b'),
-                            c: Joi.string().required()
-                        });
-                    }
+                    static joiSchema = Joi.object({
+                        a: Joi.string().min(3),
+                        b: Joi.string().default('b'),
+                        c: Joi.string().required()
+                    });
                 };
 
                 const a = Model.field('a');
@@ -1768,14 +1763,11 @@ describe('Schwifty', () => {
             it('has a no-op "patch" schema alteration.', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({
-                            a: Joi.string().min(3),
-                            b: Joi.string().default('b'),
-                            c: Joi.string().required()
-                        });
-                    }
+                    static joiSchema = Joi.object({
+                        a: Joi.string().min(3),
+                        b: Joi.string().default('b'),
+                        c: Joi.string().required()
+                    });
                 };
 
                 const a = Model.field('a').tailor('patch');
@@ -1797,14 +1789,11 @@ describe('Schwifty', () => {
             it('has a "full" schema alteration.', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({
-                            a: Joi.string().min(3),
-                            b: Joi.string().default('b'),
-                            c: Joi.string().required()
-                        });
-                    }
+                    static joiSchema = Joi.object({
+                        a: Joi.string().min(3),
+                        b: Joi.string().default('b'),
+                        c: Joi.string().required()
+                    });
                 };
 
                 const a = Model.field('a').tailor('full');
@@ -1826,17 +1815,14 @@ describe('Schwifty', () => {
             it('supports nested properties.', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({
-                            a: Joi.object({
-                                d: Joi.string().min(3),
-                                e: Joi.string().default('e')
-                            }),
-                            b: Joi.string().default('b'),
-                            c: Joi.string().required()
-                        });
-                    }
+                    static joiSchema = Joi.object({
+                        a: Joi.object({
+                            d: Joi.string().min(3),
+                            e: Joi.string().default('e')
+                        }),
+                        b: Joi.string().default('b'),
+                        c: Joi.string().required()
+                    });
                 };
 
                 const d = Model.field('a.d');
@@ -1863,15 +1849,12 @@ describe('Schwifty', () => {
             it('validation throws when the schema contains an invalid ref.', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({
-                            a: Joi.number(),
-                            b: Joi.number(),
-                            c: Joi.ref('a'),
-                            d: Joi.expression('{b * a}')
-                        });
-                    }
+                    static joiSchema = Joi.object({
+                        a: Joi.number(),
+                        b: Joi.number(),
+                        c: Joi.ref('a'),
+                        d: Joi.expression('{b * a}')
+                    });
                 };
 
                 const a = Model.field('a');
@@ -1890,6 +1873,24 @@ describe('Schwifty', () => {
                 });
                 expect(schema.validate({ a: '123', c: '123' })).to.equal({ value: { a: '123', c: '123' } });
             });
+
+            it('throws when field doesn\'t exist.', () => {
+
+                const ModelOne = class extends Schwifty.Model {
+                    static joiSchema = Joi.object({
+                        a: Joi.string().min(3),
+                        b: Joi.string().default('b'),
+                        c: Joi.string().required()
+                    });
+                };
+
+                expect(() => ModelOne.field('a')).to.not.throw();
+                expect(() => ModelOne.field('d')).to.throw('Schema does not contain path d');
+
+                const ModelTwo = class extends Schwifty.Model {};
+
+                expect(() => ModelTwo.field('a')).to.throw('Model does not have a joi schema.');
+            });
         });
 
         describe('static getter jsonAttributes', () => {
@@ -1897,15 +1898,12 @@ describe('Schwifty', () => {
             it('lists attributes that are specified as Joi objects or arrays.', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({
-                            arr: Joi.array(),
-                            obj: Joi.object(),
-                            str: Joi.string(),
-                            num: Joi.number()
-                        });
-                    }
+                    static joiSchema = Joi.object({
+                        arr: Joi.array(),
+                        obj: Joi.object(),
+                        str: Joi.string(),
+                        num: Joi.number()
+                    });
                 };
 
                 const jsonAttributes = Model.jsonAttributes;
@@ -1914,18 +1912,15 @@ describe('Schwifty', () => {
                 expect(jsonAttributes).to.contain(['arr', 'obj']);
             });
 
-            it('returns null for a missing Joi schema.', () => {
+            it('returns undefined for a missing Joi schema.', () => {
 
-                expect(Schwifty.Model.jsonAttributes).to.equal(null);
+                expect(Schwifty.Model.jsonAttributes).to.equal(undefined);
             });
 
             it('returns an empty array for an empty Joi schema.', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object();
-                    }
+                    static joiSchema = Joi.object();
                 };
 
                 expect(Model.jsonAttributes).to.equal([]);
@@ -1934,15 +1929,12 @@ describe('Schwifty', () => {
             it('is memoized.', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({
-                            arr: Joi.array(),
-                            obj: Joi.object(),
-                            str: Joi.string(),
-                            num: Joi.number()
-                        });
-                    }
+                    static joiSchema = Joi.object({
+                        arr: Joi.array(),
+                        obj: Joi.object(),
+                        str: Joi.string(),
+                        num: Joi.number()
+                    });
                 };
 
                 expect(Model.jsonAttributes).to.shallow.equal(Model.jsonAttributes);
@@ -1956,10 +1948,7 @@ describe('Schwifty', () => {
                 ParentModel.jsonAttributes = false;
 
                 const ModelOne = class extends ParentModel {
-                    static get joiSchema() {
-
-                        return Joi.object();
-                    }
+                    static joiSchema = Joi.object();
                 };
 
                 expect(ModelOne.jsonAttributes).to.equal([]);
@@ -1967,10 +1956,7 @@ describe('Schwifty', () => {
                 // Prefers own set value
 
                 const ModelTwo = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object();
-                    }
+                    static joiSchema = Joi.object();
                 };
 
                 ModelTwo.jsonAttributes = false;
@@ -1985,15 +1971,12 @@ describe('Schwifty', () => {
             it('sets $$schwiftyJsonAttributes', () => {
 
                 const Model = class extends Schwifty.Model {
-                    static get joiSchema() {
-
-                        return Joi.object({
-                            arr: Joi.array(),
-                            obj: Joi.object(),
-                            str: Joi.string(),
-                            num: Joi.number()
-                        });
-                    }
+                    static joiSchema = Joi.object({
+                        arr: Joi.array(),
+                        obj: Joi.object(),
+                        str: Joi.string(),
+                        num: Joi.number()
+                    });
                 };
 
                 const jsonAttrs = Model.jsonAttributes;
@@ -2002,6 +1985,7 @@ describe('Schwifty', () => {
 
                 const emptyJsonAttrs = Model.jsonAttributes = [];
                 expect(emptyJsonAttrs).to.shallow.equal(Model.$$schwiftyJsonAttributes);
+                expect(Model.jsonAttributes).to.shallow.equal(emptyJsonAttrs);
             });
         });
 
