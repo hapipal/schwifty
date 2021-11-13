@@ -1,6 +1,6 @@
 {
   "name": "@hapipal/schwifty",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "description": "A model layer for hapi integrating Objection ORM",
   "main": "lib/index.js",
   "scripts": {
