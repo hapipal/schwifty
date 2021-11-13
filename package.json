@@ -36,7 +36,7 @@
     "@hapi/hapi": ">=19 <21",
     "joi": ">=17 <18",
     "knex": ">=0.16",
-    "objection": ">=1 <3"
+    "objection": ">=1 <4"
   },
   "devDependencies": {
     "@hapi/code": "8.x.x",
@@ -44,8 +44,8 @@
     "@hapi/lab": "24.x.x",
     "@hapipal/ahem": "2.x.x",
     "coveralls": "3.x.x",
-    "knex": "0.21.x",
-    "objection": "2.x.x",
+    "knex": "0.95.x",
+    "objection": "3.x.x",
     "sqlite3": "5.x.x"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",
