@@ -3,6 +3,7 @@
   "version": "6.1.0",
   "description": "A model layer for hapi integrating Objection ORM",
   "main": "lib/index.js",
+  "types": "types.d.ts",
   "scripts": {
     "test": "lab -a @hapi/code -t 100 -L",
     "coveralls": "lab -r lcov | coveralls"
@@ -46,7 +47,8 @@
     "coveralls": "3.x.x",
     "knex": "0.95.x",
     "objection": "3.x.x",
-    "sqlite3": "5.x.x"
+    "sqlite3": "5.x.x",
+    "@hapipal/types-schwifty": ">=0.0.1-alpha.0"
   },
   "author": "William Woodruff <bill@bigroomstudios.com>",
   "license": "MIT"
