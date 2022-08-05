@@ -48,6 +48,6 @@
     "objection": "3.x.x",
     "sqlite3": "5.x.x"
   },
-  "author": "William Woodruff <bill@bigroomstudios.com>",
+  "author": "William Woodruff and Contributors",
   "license": "MIT"
 }
