@@ -2,7 +2,7 @@
 
 A model layer for [hapi](https://hapi.dev) integrating [Objection ORM](https://vincit.github.io/objection.js/)
 
-[![Build Status](https://app.travis-ci.com/hapipal/schwifty.svg?branch=master)](https://app.travis-ci.com/hapipal/schwifty) [![Coverage Status](https://coveralls.io/repos/github/hapipal/schwifty/badge.svg?branch=master)](https://coveralls.io/github/hapipal/schwifty?branch=master)
+[![Build Status](https://app.travis-ci.com/hapipal/schwifty.svg?branch=main)](https://app.travis-ci.com/hapipal/schwifty) [![Coverage Status](https://coveralls.io/repos/github/hapipal/schwifty/badge.svg?branch=main)](https://coveralls.io/github/hapipal/schwifty?branch=main)
 
 Lead Maintainer - [Devin Ivy](https://github.com/devinivy)
 
