@@ -13,4 +13,4 @@ Code changes are welcome and should follow the guidelines below.
 * Fix the issue ensuring that your code follows the [hapi style guide](https://hapi.dev/policies/styleguide/).
 * Add tests for your new code ensuring that you have 100% code coverage (we can help you reach 100% but will not merge without it).
     * Run `npm test` to generate a report of test coverage and linting results.
-* [Pull requests](http://help.github.com/send-pull-requests/) should be made to the [master branch](https://github.com/hapipal/schwifty/tree/master) or in certain special cases, the branch for a relevant [milestone](https://github.com/hapipal/schwifty/milestones).
+* [Pull requests](http://help.github.com/send-pull-requests/) should be made to the [main branch](https://github.com/hapipal/schwifty/tree/main) or in certain special cases, the branch for a relevant [milestone](https://github.com/hapipal/schwifty/milestones).

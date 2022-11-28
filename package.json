@@ -28,25 +28,25 @@
     "model"
   ],
   "dependencies": {
-    "@hapi/hoek": "9.x.x",
-    "@hapipal/toys": "3.x.x",
-    "joi": "17.x.x"
+    "@hapi/hoek": "^9.0.0",
+    "@hapipal/toys": "^3.2.0",
+    "joi": "^17.0.0"
   },
   "peerDependencies": {
-    "@hapi/hapi": ">=19 <21",
+    "@hapi/hapi": ">=19 <22",
     "joi": ">=17 <18",
     "knex": ">=0.16",
     "objection": ">=1 <4"
   },
   "devDependencies": {
-    "@hapi/code": "8.x.x",
-    "@hapi/hapi": "20.x.x",
-    "@hapi/lab": "24.x.x",
-    "@hapipal/ahem": "2.x.x",
-    "coveralls": "3.x.x",
-    "knex": "0.95.x",
-    "objection": "3.x.x",
-    "sqlite3": "5.x.x"
+    "@hapi/code": "^8.0.0",
+    "@hapi/hapi": "^20.0.0",
+    "@hapi/lab": "^24.0.0",
+    "@hapipal/ahem": "^2.0.0",
+    "coveralls": "^3.0.0",
+    "knex": "^0.95.0",
+    "objection": "^3.0.0",
+    "sqlite3": "^5.0.0"
   },
   "author": "William Woodruff and Contributors",
   "license": "MIT"
