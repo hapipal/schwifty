@@ -14,7 +14,7 @@ npm install @hapipal/schwifty
 ## Usage
 > See also the [API Reference](API.md)
 >
-> Schwifty is intended for use with hapi v19+, nodejs v12+, Joi v17+, Objection v1 through v3, and knex v0.16+ (_see v5 for lower support_).
+> Schwifty is intended for use with hapi v20+, nodejs v16+, Joi v17+, Objection v2 through v3, and knex v0.21.19+ (_see v6 for lower support_).
 
 Schwifty is used to define [Joi](https://joi.dev/)-compatible models and knex connections for use with Objection ORM.  Those models then become available within your hapi server where it is most convenient.  It has been tailored to multi-plugin deployments, where each plugin may set clear boundaries in defining its own models, knex database connections, and migrations.  It's safe to register schwifty multiple times, wherever you'd like to use it, as it protects against model name collisions and other ambiguous configurations.
 
