@@ -29,14 +29,14 @@
   ],
   "dependencies": {
     "@hapi/hoek": "^11.0.2",
-    "@hapipal/toys": "^3.2.0",
+    "@hapipal/toys": "^4.0.0",
     "joi": "^17.8.3"
   },
   "peerDependencies": {
     "@hapi/hapi": ">=20 <22",
-    "joi": ">=17 <18",
-    "knex": ">=0.21.19",
-    "objection": ">=2 <4"
+    "joi": "^17.0.0",
+    "knex": "^2.0.0",
+    "objection": "^3.0.0"
   },
   "devDependencies": {
     "@hapi/code": "^9.0.3",

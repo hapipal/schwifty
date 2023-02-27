@@ -4,7 +4,7 @@ A model layer for [hapi](https://hapi.dev) integrating [Objection ORM](https://v
 
 > **Note**
 >
-> Schwifty is intended for use with hapi v20+, nodejs v16+, Joi v17+, Objection v2 through v3, and knex v0.21.19+ (_see v6 for lower support_).
+> Schwifty is intended for use with hapi v20+, nodejs v16+, Joi v17, Objection v3, and knex v2 (_see v6 for lower support_).
 
 ## The hapi plugin
 ### Registration
