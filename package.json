@@ -3,6 +3,7 @@
   "version": "6.2.0",
   "description": "A model layer for hapi integrating Objection ORM",
   "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "test": "lab -a @hapi/code -t 100 -L",
     "coveralls": "lab -r lcov | coveralls"
